@@ -52,10 +52,7 @@ window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
-  setTimeout(() => {
-    document.getElementById('splash').classList.add('fade-out');
-    setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 500);
-  }, 1800);
+  hideSplash();
 
   auth.onAuthStateChanged(user => {
     if (user) {
@@ -66,6 +63,15 @@ window.addEventListener('load', () => {
     }
   });
 });
+
+function hideSplash(delay = 500) {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  setTimeout(() => {
+    splash.classList.add('fade-out');
+    setTimeout(() => { splash.style.display = 'none'; }, 500);
+  }, delay);
+}
 
 function showAuthScreen() {
   document.getElementById('auth-screen').classList.remove('hidden');
@@ -128,20 +134,26 @@ window.signupUser = async function() {
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const errEl = document.getElementById('signup-error');
+  errEl.classList.add('hidden');
   if (!name || !email || !password) { showAuthError(errEl, 'Please fill all required fields.'); return; }
   if (password.length < 8) { showAuthError(errEl, 'Password must be at least 8 characters.'); return; }
+  const btn = document.querySelector('#signup-form .btn-auth');
   try {
-    const btn = document.querySelector('#signup-form .btn-auth');
     btn.disabled = true; btn.innerHTML = '<span>Creating account...</span>';
     const cred = await auth.createUserWithEmailAndPassword(email, password);
-    await db.collection('users').doc(cred.user.uid).set({
+    await cred.user.updateProfile({ displayName: name }).catch(() => {});
+    const profile = {
       name, email, college, semester: sem, cgpa,
       branch: 'ECE', targetCgpa: 9.0, goal: 'cyber_ai', bio: '',
       avatarUrl: '', createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    userProfile = { ...profile, createdAt: new Date() };
+    await db.collection('users').doc(cred.user.uid).set(profile, { merge: true }).catch(e => {
+      console.warn('Profile save failed; continuing with authenticated account.', e);
+      localStorage.setItem(`creo-profile-${cred.user.uid}`, JSON.stringify({ ...userProfile, email }));
     });
   } catch(e) {
-    showAuthError(document.getElementById('signup-error'), getAuthError(e.code));
-    const btn = document.querySelector('#signup-form .btn-auth');
+    showAuthError(errEl, getAuthError(e.code));
     btn.disabled = false; btn.innerHTML = '<span>Create Account</span><i data-lucide="arrow-right"></i>';
     lucide.createIcons();
   }
@@ -241,9 +253,25 @@ async function loadUserProfile() {
     if (doc.exists) {
       userProfile = doc.data();
     } else {
-      userProfile = { name: currentUser.displayName || 'Student', email: currentUser.email, semester: '1', cgpa: '0', college: '', branch: 'ECE' };
+      userProfile = loadLocalProfile() || getDefaultProfile();
     }
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    console.error(e);
+    userProfile = loadLocalProfile() || getDefaultProfile();
+  }
+}
+
+function getDefaultProfile() {
+  return { name: currentUser.displayName || 'Student', email: currentUser.email, semester: '1', cgpa: '0', college: '', branch: 'ECE' };
+}
+
+function loadLocalProfile() {
+  try {
+    const raw = localStorage.getItem(`creo-profile-${currentUser.uid}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) {
+    return null;
+  }
 }
 
 function updateHeaderUI() {
@@ -1777,7 +1805,17 @@ function clearAllCharts() {
 // OPENROUTER API
 // ============================================================
 async function callOpenRouter(prompt, maxTokens = 1000) {
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
+  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
+    const res = await fetch(AI_API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: prompt, maxTokens })
+    });
+    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
+    const data = await res.json().catch(() => null);
+    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || '';
+  }
+  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
     throw new Error('OpenRouter API key not configured');
   }
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -1800,7 +1838,18 @@ async function callOpenRouter(prompt, maxTokens = 1000) {
 }
 
 async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens = 1000) {
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
+  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
+    const latestMessage = [...history].reverse().find(m => m.role === 'user')?.content || '';
+    const res = await fetch(AI_API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: latestMessage, systemPrompt, history, model, maxTokens })
+    });
+    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
+    const data = await res.json().catch(() => null);
+    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || 'No response received.';
+  }
+  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
     throw new Error('OpenRouter API key not configured. Please add your key in firebase.js');
   }
   const messages = [{ role: 'system', content: systemPrompt }, ...history];

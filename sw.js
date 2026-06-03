@@ -1,5 +1,5 @@
 // CREO ECE Career OS — Service Worker (sw.js)
-const CACHE_NAME = 'creo-ece-v1';
+const CACHE_NAME = 'creo-ece-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
   '/app.js',
   '/firebase.js',
   'https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap',
-  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
   'https://unpkg.com/lucide@latest/dist/umd/lucide.js'
 ];
 
@@ -29,12 +29,45 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  const url = new URL(e.request.url);
+  const shouldSkipCache =
+    url.hostname.includes('firestore') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('googleapis') ||
+    url.hostname.includes('openrouter') ||
+    url.hostname.includes('workers.dev');
+
+  if (shouldSkipCache) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
+  const isAppShellAsset =
+    url.origin === self.location.origin &&
+    ['/', '/index.html', '/app.js', '/firebase.js', '/styles.css'].includes(url.pathname);
+
+  if (isAppShellAsset) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request).then(cached => cached || caches.match('/index.html')))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached => {
       const network = fetch(e.request).then(res => {
-        if (res.ok && !e.request.url.includes('firestore') && !e.request.url.includes('openrouter')) {
+        if (res.ok) {
           const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }
         return res;
       });
