@@ -1051,6 +1051,16 @@ function renderWeeklyFocusChart() {
 // ============================================================
 // AI ASSISTANT
 // ============================================================
+
+window.toggleAIChatMenu = function() {
+  const container = document.getElementById('ai-chat-container');
+  container?.classList.toggle('menu-open');
+};
+
+window.closeAIChatMenu = function() {
+  document.getElementById('ai-chat-container')?.classList.remove('menu-open');
+};
+
 const QUICK_PROMPTS = {
   summarize: 'I need help summarizing my ECE study notes. Explain how to summarize topics like Digital Signal Processing, VLSI Design, Communication Systems, Embedded Systems, and Control Systems. Give a structured summary format.',
   explain_ece: 'Can you explain a fundamental ECE concept in detail? Choose one of: Phase-Locked Loop (PLL), MOSFET operation, Fourier Transform applications, Op-Amp circuits, or antenna basics. Make it clear with examples.',
@@ -1066,6 +1076,7 @@ window.quickPrompt = function(type) {
   const prompt = QUICK_PROMPTS[type];
   if (prompt) {
     document.getElementById('ai-input').value = prompt;
+    closeAIChatMenu();
     navigate('ai-assistant');
     setTimeout(() => sendAIMessage(), 100);
   }
@@ -1181,12 +1192,14 @@ window.openAIChat = function(chatId) {
   syncActiveAIHistory();
   renderAIChat();
   renderAIHistoryList();
+  closeAIChatMenu();
 };
 
 window.startNewAIChat = function() {
   if (aiIsResponding) stopAIResponse();
   createAIChatSession();
   renderAIChat();
+  closeAIChatMenu();
   showToast('New AI chat started.', 'success');
 };
 
