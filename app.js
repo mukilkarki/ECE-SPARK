@@ -22,11 +22,13 @@ let certifications = [];
 let internships = [];
 let projects = [];
 let ctfChallenges = [];
-let cyberSkills = {
-  networking: 40, linux: 35, python: 50,
-  web_sec: 20, pentest: 15, crypto: 25,
-  forensics: 10, malware: 5, cloud: 10
+const DEFAULT_CYBER_SKILLS = {
+  networking: 0, linux: 0, python: 0,
+  web_sec: 0, pentest: 0, crypto: 0,
+  forensics: 0, malware: 0, cloud: 0
 };
+const OPTIONAL_TRACK_GOALS = new Set(['cybersec', 'ai_ml', 'cyber_ai']);
+let cyberSkills = { ...DEFAULT_CYBER_SKILLS };
 let roadmapProgress = {};
 let aiChatHistory = [];
 
@@ -52,10 +54,7 @@ window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
-  setTimeout(() => {
-    document.getElementById('splash').classList.add('fade-out');
-    setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 500);
-  }, 1800);
+  hideSplash();
 
   auth.onAuthStateChanged(user => {
     if (user) {
@@ -66,6 +65,15 @@ window.addEventListener('load', () => {
     }
   });
 });
+
+function hideSplash(delay = 500) {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  setTimeout(() => {
+    splash.classList.add('fade-out');
+    setTimeout(() => { splash.style.display = 'none'; }, 500);
+  }, delay);
+}
 
 function showAuthScreen() {
   document.getElementById('auth-screen').classList.remove('hidden');
@@ -78,6 +86,7 @@ async function loadApp() {
   document.getElementById('app').classList.remove('hidden');
   await loadUserProfile();
   updateHeaderUI();
+  updateOptionalTrackUI();
   navigate('dashboard');
   lucide.createIcons();
   refreshAISuggestions();
@@ -128,20 +137,27 @@ window.signupUser = async function() {
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const errEl = document.getElementById('signup-error');
+  errEl.classList.add('hidden');
   if (!name || !email || !password) { showAuthError(errEl, 'Please fill all required fields.'); return; }
   if (password.length < 8) { showAuthError(errEl, 'Password must be at least 8 characters.'); return; }
+  const btn = document.querySelector('#signup-form .btn-auth');
   try {
-    const btn = document.querySelector('#signup-form .btn-auth');
     btn.disabled = true; btn.innerHTML = '<span>Creating account...</span>';
     const cred = await auth.createUserWithEmailAndPassword(email, password);
-    await db.collection('users').doc(cred.user.uid).set({
+    await cred.user.updateProfile({ displayName: name }).catch(() => {});
+    const profile = {
       name, email, college, semester: sem, cgpa,
-      branch: 'ECE', targetCgpa: 9.0, goal: 'cyber_ai', bio: '',
-      avatarUrl: '', createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      branch: 'ECE', targetCgpa: 0, goal: 'ece_core', bio: '',
+      avatarUrl: '', cyberSkills: { ...DEFAULT_CYBER_SKILLS }, roadmapProgress: {},
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    userProfile = { ...profile, createdAt: new Date() };
+    await db.collection('users').doc(cred.user.uid).set(profile, { merge: true }).catch(e => {
+      console.warn('Profile save failed; continuing with authenticated account.', e);
+      localStorage.setItem(`creo-profile-${cred.user.uid}`, JSON.stringify({ ...userProfile, email }));
     });
   } catch(e) {
-    showAuthError(document.getElementById('signup-error'), getAuthError(e.code));
-    const btn = document.querySelector('#signup-form .btn-auth');
+    showAuthError(errEl, getAuthError(e.code));
     btn.disabled = false; btn.innerHTML = '<span>Create Account</span><i data-lucide="arrow-right"></i>';
     lucide.createIcons();
   }
@@ -166,6 +182,7 @@ window.logoutUser = async function() {
   currentUser = null; userProfile = {};
   subjects = []; habits = []; notes = []; certifications = [];
   internships = []; projects = []; ctfChallenges = [];
+  studySessions = []; roadmapProgress = {}; cyberSkills = { ...DEFAULT_CYBER_SKILLS };
   aiChatHistory = [];
   clearAllCharts();
   showToast('Signed out successfully', 'info');
@@ -175,6 +192,11 @@ function showAuthError(el, msg) {
   el.textContent = msg; el.classList.remove('hidden');
   el.className = 'auth-error';
 }
+function formatNumber(value) {
+  const num = Number(value) || 0;
+  return Number.isInteger(num) ? String(num) : num.toFixed(2).replace(/\.?0+$/, '');
+}
+
 function getAuthError(code) {
   const msgs = {
     'auth/user-not-found': 'No account found with this email.',
@@ -192,6 +214,10 @@ function getAuthError(code) {
 // NAVIGATION
 // ============================================================
 window.navigate = function(page) {
+  if (page === 'cybersec' && !isOptionalTrackEnabled()) {
+    showToast('Enable a Cybersecurity or AI Engineering optional track in Profile first.', 'info');
+    page = 'profile';
+  }
   document.querySelectorAll('.page').forEach(p => {
     p.classList.add('hidden'); p.classList.remove('active');
   });
@@ -238,12 +264,35 @@ async function loadUserProfile() {
   if (!currentUser) return;
   try {
     const doc = await db.collection('users').doc(currentUser.uid).get();
-    if (doc.exists) {
-      userProfile = doc.data();
-    } else {
-      userProfile = { name: currentUser.displayName || 'Student', email: currentUser.email, semester: '1', cgpa: '0', college: '', branch: 'ECE' };
-    }
-  } catch(e) { console.error(e); }
+    userProfile = doc.exists ? doc.data() : (loadLocalProfile() || getDefaultProfile());
+  } catch(e) {
+    console.error(e);
+    userProfile = loadLocalProfile() || getDefaultProfile();
+  }
+  normalizeProfileState();
+}
+
+function normalizeProfileState() {
+  userProfile = { ...getDefaultProfile(), ...userProfile };
+  cyberSkills = { ...DEFAULT_CYBER_SKILLS, ...(userProfile.cyberSkills || {}) };
+  roadmapProgress = userProfile.roadmapProgress || {};
+}
+
+function getDefaultProfile() {
+  return {
+    name: currentUser.displayName || 'Student', email: currentUser.email,
+    semester: '', cgpa: 0, college: '', branch: 'ECE', targetCgpa: 0,
+    goal: 'ece_core', bio: '', cyberSkills: { ...DEFAULT_CYBER_SKILLS }, roadmapProgress: {}
+  };
+}
+
+function loadLocalProfile() {
+  try {
+    const raw = localStorage.getItem(`creo-profile-${currentUser.uid}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) {
+    return null;
+  }
 }
 
 function updateHeaderUI() {
@@ -252,6 +301,32 @@ function updateHeaderUI() {
   document.getElementById('sidebar-name').textContent = name;
   document.getElementById('header-avatar').src = avatarUrl;
   document.getElementById('sidebar-avatar').src = avatarUrl;
+  const roleEl = document.getElementById('sidebar-role');
+  if (roleEl) roleEl.textContent = getCareerGoalLabel(userProfile.goal);
+}
+
+function isOptionalTrackEnabled() {
+  return OPTIONAL_TRACK_GOALS.has(userProfile.goal);
+}
+
+function getCareerGoalLabel(goal = 'ece_core') {
+  const labels = {
+    ece_core: 'ECE Core Track',
+    embedded: 'ECE · Embedded Systems',
+    vlsi: 'ECE · VLSI / Semiconductors',
+    communication: 'ECE · Communication Systems',
+    cybersec: 'ECE + Cybersecurity',
+    ai_ml: 'ECE + AI Engineering',
+    cyber_ai: 'ECE + Cybersecurity + AI',
+    sde: 'ECE + Software Development'
+  };
+  return labels[goal] || labels.ece_core;
+}
+
+function updateOptionalTrackUI() {
+  const enabled = isOptionalTrackEnabled();
+  document.querySelectorAll('[data-optional-track]').forEach(el => el.classList.toggle('hidden', !enabled));
+  if (!enabled && document.getElementById('page-cybersec')?.classList.contains('active')) navigate('dashboard');
 }
 
 function loadProfile() {
@@ -264,10 +339,13 @@ function loadProfile() {
   document.getElementById('profile-name-input').value = name;
   document.getElementById('profile-college-input').value = p.college || '';
   document.getElementById('profile-branch-input').value = p.branch || 'ECE';
-  document.getElementById('profile-sem-input').value = p.semester || '1';
+  document.getElementById('profile-sem-input').value = p.semester || '';
   document.getElementById('profile-cgpa-input').value = p.cgpa || '';
   document.getElementById('profile-target-cgpa-input').value = p.targetCgpa || '';
-  document.getElementById('profile-goal-input').value = p.goal || 'cyber_ai';
+  document.getElementById('profile-goal-input').value = p.goal || 'ece_core';
+  const badgeText = getCareerGoalLabel(p.goal);
+  document.getElementById('profile-track-badge').textContent = badgeText;
+  document.getElementById('profile-optional-badge').classList.toggle('hidden', !isOptionalTrackEnabled());
   document.getElementById('profile-bio-input').value = p.bio || '';
   lucide.createIcons();
 }
@@ -288,8 +366,10 @@ window.saveProfile = async function() {
   try {
     await db.collection('users').doc(currentUser.uid).update(updated);
     userProfile = { ...userProfile, ...updated };
+    normalizeProfileState();
     updateHeaderUI();
     loadProfile();
+    updateOptionalTrackUI();
     showToast('Profile saved!', 'success');
   } catch(e) { showToast('Failed to save: ' + e.message, 'error'); }
 };
@@ -351,8 +431,9 @@ window.uploadProfilePhoto = function() {
 // ============================================================
 async function loadDashboard() {
   updateWelcomeText();
-  document.getElementById('dash-cgpa').textContent = userProfile.cgpa || '—';
+  document.getElementById('dash-cgpa').textContent = formatNumber(userProfile.cgpa || 0);
   document.getElementById('dash-sem').textContent = (userProfile.semester ? `Sem ${userProfile.semester}` : '—');
+  document.getElementById('dash-attendance').textContent = '0%';
 
   await Promise.all([loadSubjectsForDash(), loadHabitsForDash(), loadNotesForDash(), loadExamsForDash()]);
   loadCyberSkillsMini();
@@ -454,6 +535,7 @@ async function loadExamsForDash() {
 
 function loadCyberSkillsMini() {
   const el = document.getElementById('dash-cyber-skills');
+  if (!isOptionalTrackEnabled()) { el.innerHTML = '<div class="empty-state-sm">Optional Cyber/AI track not enabled.</div>'; return; }
   const topSkills = Object.entries(cyberSkills).slice(0, 5);
   if (!topSkills.length) { el.innerHTML = '<div class="empty-state-sm">No skills tracked</div>'; return; }
   el.innerHTML = topSkills.map(([k, v]) => `
@@ -483,29 +565,35 @@ async function refreshAISuggestions() {
   el.innerHTML = '<div class="ai-suggestion-loading"><div class="typing-dots"><span></span><span></span><span></span></div><span>Generating personalized suggestions...</span></div>';
 
   const profile = userProfile;
-  const prompt = `You are a career advisor for an ECE student targeting Cybersecurity + AI engineering.
-Student: ${profile.name||'ECE Student'}, Semester ${profile.semester||1}, CGPA ${profile.cgpa||0}/${profile.targetCgpa||9.0}.
-Give exactly 3 concise, actionable study/career suggestions for today. 
+  const trackContext = isOptionalTrackEnabled() ? getCareerGoalLabel(profile.goal) : 'ECE core engineering';
+  const prompt = `You are an academic advisor for an ECE student.
+Student: ${profile.name||'ECE Student'}, Semester ${profile.semester||'not set'}, CGPA ${profile.cgpa||0}/${profile.targetCgpa||0}, Track: ${trackContext}.
+Give exactly 3 concise, actionable study suggestions for today.
 Format as a JSON array: [{"icon":"emoji","text":"suggestion"}]
-Keep each suggestion under 20 words. Focus on cybersecurity certifications, CTF practice, and skill building.`;
+Keep each suggestion under 20 words. Prioritize ECE subjects, labs, notes, attendance, and exam preparation.`;
 
   try {
     const res = await callOpenRouter(prompt, 300);
     const clean = res.replace(/```json|```/g,'').trim();
     let suggestions;
-    try { suggestions = JSON.parse(clean); } catch { suggestions = [{icon:'🎯',text:'Practice a TryHackMe room today to build pentesting skills.'},{icon:'📚',text:'Review OWASP Top 10 vulnerabilities — essential for web security.'},{icon:'⚡',text:'Implement a Python port scanner to understand networking fundamentals.'}]; }
+    try { suggestions = JSON.parse(clean); } catch { suggestions = getDefaultECESuggestions(); }
     el.innerHTML = suggestions.slice(0,3).map(s => `
       <div class="ai-suggestion-item">
         <span style="font-size:1.2rem;margin-right:6px">${s.icon||'⚡'}</span>${escHtml(s.text)}
       </div>
     `).join('');
   } catch(e) {
-    el.innerHTML = `
-      <div class="ai-suggestion-item">🎯 Complete one TryHackMe room today to sharpen your pentesting skills.</div>
-      <div class="ai-suggestion-item">📚 Study the OWASP Top 10 — critical knowledge for web application security.</div>
-      <div class="ai-suggestion-item">⚡ Write a Python script to automate a repetitive security task.</div>
-    `;
+    el.innerHTML = getDefaultECESuggestions().map(s => `
+      <div class="ai-suggestion-item"><span style="font-size:1.2rem;margin-right:6px">${s.icon}</span>${escHtml(s.text)}</div>
+    `).join('');
   }
+}
+function getDefaultECESuggestions() {
+  return [
+    { icon: '📚', text: 'Add your current ECE subjects to begin tracking marks and attendance.' },
+    { icon: '🧪', text: "Log today's lab work or study session for accurate progress." },
+    { icon: '📝', text: 'Upload one class note or assignment to organize your semester.' }
+  ];
 }
 window.refreshAISuggestions = refreshAISuggestions;
 
@@ -570,7 +658,7 @@ function updateSemesterStats() {
 }
 
 function predictSGPA(subs) {
-  if (!subs.length) return '—';
+  if (!subs.length) return '0';
   const gradeMap = (mark) => {
     if (mark >= 27) return 10; if (mark >= 24) return 9; if (mark >= 21) return 8;
     if (mark >= 18) return 7; if (mark >= 15) return 6; return 5;
@@ -581,7 +669,7 @@ function predictSGPA(subs) {
     const g = gradeMap(parseFloat(s.internalMark)||0);
     totalGradePoints += c * g; totalCredits += c;
   });
-  return totalCredits ? (totalGradePoints / totalCredits).toFixed(2) : '—';
+  return totalCredits ? (totalGradePoints / totalCredits).toFixed(2) : '0';
 }
 
 window.showAddSubjectModal = function() {
@@ -842,7 +930,7 @@ async function renderHabitsFull() {
 
 window.showAddHabitModal = function() {
   openModal('Add Habit', `
-    <div class="form-group"><label>Habit Name *</label><input type="text" id="m-habit-name" placeholder="e.g. Study Cybersecurity 1hr" /></div>
+    <div class="form-group"><label>Habit Name *</label><input type="text" id="m-habit-name" placeholder="e.g. Revise Signals and Systems" /></div>
     <div class="form-row">
       <div class="form-group"><label>Icon (Emoji)</label><input type="text" id="m-habit-icon" placeholder="🛡️" maxlength="2" /></div>
       <div class="form-group"><label>Target Days/Week</label><input type="number" id="m-habit-days" placeholder="7" min="1" max="7" /></div>
@@ -918,7 +1006,7 @@ window.showLogStudyModal = function() {
   const subjOptions = subjects.map(s => `<option value="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
   openModal('Log Study Session', `
     <div class="form-group"><label>Subject</label>
-      <select id="m-sess-subject"><option value="Self Study">Self Study</option>${subjOptions}<option value="CTF Practice">CTF Practice</option><option value="Certification Study">Certification Study</option></select>
+      <select id="m-sess-subject"><option value="Self Study">Self Study</option><option value="ECE Lab Work">ECE Lab Work</option>${subjOptions}${isOptionalTrackEnabled() ? '<option value="Optional Track Practice">Optional Track Practice</option><option value="Certification Study">Certification Study</option>' : ''}</select>
     </div>
     <div class="form-group"><label>Duration (minutes)</label><input type="number" id="m-sess-duration" placeholder="60" min="5" max="480" /></div>
     <div class="form-group"><label>Notes</label><textarea id="m-sess-notes" rows="2" placeholder="What did you study?"></textarea></div>
@@ -942,7 +1030,9 @@ function renderWeeklyFocusChart() {
   if (!ctx) return;
   destroyChart('weeklyFocus');
   const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const data = days.map(() => Math.floor(Math.random() * 120 + 20));
+  const data = getLastSevenDayKeys().map(key => studySessions
+    .filter(s => (s.date || '').slice(0, 10) === key)
+    .reduce((sum, s) => sum + (parseFloat(s.duration) || 0), 0));
   charts.weeklyFocus = new Chart(ctx, {
     type: 'bar',
     data: { labels: days, datasets: [{ label: 'Focus (min)', data, backgroundColor: 'rgba(0,245,196,0.3)', borderColor: 'rgba(0,245,196,0.8)', borderWidth: 2, borderRadius: 6 }] },
@@ -954,14 +1044,14 @@ function renderWeeklyFocusChart() {
 // AI ASSISTANT
 // ============================================================
 const QUICK_PROMPTS = {
-  summarize: 'I need help summarizing my ECE study notes. Can you explain how to effectively summarize technical topics like Digital Signal Processing, VLSI Design, or Communication Systems? Also, give me a sample structured summary format for a complex ECE topic.',
-  explain_ece: 'Can you explain a fundamental ECE concept in detail? Choose one of: Phase-Locked Loop (PLL), MOSFET operation, Fourier Transform applications in signal processing, or Op-Amp circuits. Make it clear with examples.',
-  explain_cyber: 'Explain a key cybersecurity concept in depth. Choose: Buffer Overflow exploitation, SQL Injection with examples, Cross-Site Scripting (XSS) attack types, or Public Key Infrastructure (PKI). Include how to defend against it.',
-  quiz: 'Generate a 5-question multiple choice quiz on cybersecurity fundamentals for an ECE student. Include topics like networking, web security, cryptography, and Linux. Format with question, options A-D, and the correct answer marked.',
-  interview: 'Generate 10 important technical interview questions for a Cybersecurity / Security Engineer role, suitable for an ECE final-year student. Include questions on networking, web app security, cryptography, and Linux. Provide brief expected answers.',
-  roadmap: 'Create a detailed 6-month learning roadmap for an ECE student (current semester 5) who wants to become a Cybersecurity + AI Engineer. Include: monthly goals, specific skills to learn, certifications to target, platforms to use (TryHackMe, HackTheBox), and projects to build.',
-  ctf: 'Give me tips and hints for solving common CTF challenge categories: Web Exploitation, Cryptography, Binary Exploitation (pwn), Reverse Engineering, and Forensics. Include recommended tools for each category.',
-  resume: 'Help me build an ATS-optimized resume for a Cybersecurity/Security Engineer internship as an ECE student. What sections should I include? What skills are most important to highlight? Provide a template structure.'
+  summarize: 'I need help summarizing my ECE study notes. Explain how to summarize topics like Digital Signal Processing, VLSI Design, Communication Systems, Embedded Systems, and Control Systems. Give a structured summary format.',
+  explain_ece: 'Can you explain a fundamental ECE concept in detail? Choose one of: Phase-Locked Loop (PLL), MOSFET operation, Fourier Transform applications, Op-Amp circuits, or antenna basics. Make it clear with examples.',
+  explain_cyber: 'Optional track: explain a beginner cybersecurity concept for an ECE student, such as network security, PKI, secure IoT, or web security. Include ECE-relevant applications.',
+  quiz: 'Generate a 5-question multiple choice quiz on core ECE fundamentals: digital electronics, signals, analog circuits, communication systems, and microprocessors. Include correct answers.',
+  interview: 'Generate 10 important technical interview questions for an ECE core role or internship. Include electronics, signals, communication, embedded systems, and basic programming with brief expected answers.',
+  roadmap: 'Create a 6-month ECE core learning roadmap covering semester subjects, labs, mini-projects, internships, GATE basics, and portfolio building. Keep cybersecurity/AI as optional add-ons.',
+  ctf: 'Optional track: give beginner-friendly tips for cybersecurity practice that connect to ECE topics like networks, IoT, embedded devices, and cryptography.',
+  resume: 'Help me build an ATS-optimized resume for an ECE internship. Include sections for coursework, labs, electronics projects, embedded systems, internships, and optional cybersecurity/AI skills.'
 };
 
 window.quickPrompt = function(type) {
@@ -990,14 +1080,14 @@ window.sendAIMessage = async function() {
 
   try {
     const model = document.getElementById('ai-model-select').value;
-    const systemPrompt = `You are CREO AI, a specialized assistant for ECE (Electronics & Communication Engineering) students targeting careers in Cybersecurity and AI Engineering.
+    const systemPrompt = `You are CREO AI, a specialized assistant for ECE (Electronics & Communication Engineering) students. Keep ECE core academics, labs, projects, exams, internships, and placements as the default focus. Treat Cybersecurity and AI Engineering as optional tracks only when the student asks for them or has enabled that goal.
 
 Your expertise includes:
 - ECE subjects: Digital Electronics, Signal Processing, VLSI, Embedded Systems, Communication Systems, Microprocessors
-- Cybersecurity: Network Security, Web App Security (OWASP), Penetration Testing, CTF challenges, Cryptography, Malware Analysis, Linux Security
-- AI/ML: Machine Learning fundamentals, Deep Learning, Neural Networks, AI applications in security
-- Career guidance: Certifications (CompTIA Security+, CEH, OSCP), internships, resume building, interview prep
-- Platforms: TryHackMe, HackTheBox, PicoCTF, Coursera, edX
+- ECE careers: core electronics, embedded systems, VLSI, communication, semiconductor roles, internships, resume building, interview prep
+- Optional Cybersecurity: network security, IoT security, cryptography, CTF basics, Linux security
+- Optional AI Engineering: ML fundamentals, signal-processing ML applications, embedded AI, model basics
+- Learning platforms and resources only when relevant to the user's chosen track
 
 Format responses clearly with:
 - Use **bold** for important terms
@@ -1079,7 +1169,7 @@ window.generateAISummary = async function() {
   const cgpa = userProfile.cgpa || '8.0';
   const prompt = `Write a 2-3 sentence professional resume summary for an ECE student named ${name||'Student'} from ${college} with CGPA ${cgpa}. 
 Skills include: Languages: ${languages||'Python, C++'}, Tools: ${tools||'Linux, Git'}.
-They're targeting Cybersecurity + AI Engineering roles. Make it ATS-friendly, impactful, and concise. Return only the summary text.`;
+Their selected track is ${getCareerGoalLabel(userProfile.goal)}. Make it ATS-friendly, ECE-focused, impactful, and concise. Return only the summary text.`;
   try {
     showToast('Generating AI summary...', 'info');
     const res = await callOpenRouter(prompt, 200);
@@ -1283,7 +1373,7 @@ function renderCerts() {
         <div class="cert-name">${escHtml(c.name)}</div>
         <div class="cert-provider">${escHtml(c.provider||'')} ${c.completedDate ? '· ' + formatDate(c.completedDate) : ''}</div>
       </div>
-      <span class="cert-category">${c.category||'Security'}</span>
+      <span class="cert-category">${c.category||'ECE Core'}</span>
       ${c.credentialUrl ? `<a href="${c.credentialUrl}" target="_blank" style="font-size:0.75rem;color:var(--cyan)">View</a>` : ''}
       <button onclick="deleteCert('${c.id}')" style="color:var(--text-3);padding:4px"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
     </div>
@@ -1293,11 +1383,11 @@ function renderCerts() {
 
 window.showAddCertModal = function() {
   openModal('Track Certification', `
-    <div class="form-group"><label>Certification Name *</label><input type="text" id="m-cert-name" placeholder="e.g. CompTIA Security+" /></div>
+    <div class="form-group"><label>Certification Name *</label><input type="text" id="m-cert-name" placeholder="e.g. NPTEL Embedded Systems" /></div>
     <div class="form-row">
       <div class="form-group"><label>Provider</label><input type="text" id="m-cert-provider" placeholder="e.g. CompTIA" /></div>
       <div class="form-group"><label>Category</label>
-        <select id="m-cert-cat"><option>Security</option><option>Networking</option><option>Cloud</option><option>AI/ML</option><option>Development</option></select>
+        <select id="m-cert-cat"><option>ECE Core</option><option>Embedded Systems</option><option>VLSI</option><option>Communication</option><option>Networking</option><option>Optional Cybersecurity</option><option>Optional AI/ML</option><option>Development</option></select>
       </div>
     </div>
     <div class="form-row">
@@ -1421,10 +1511,10 @@ window.showUpdateSkillModal = function() {
   const fields = Object.entries(cyberSkills).map(([k,v]) => `
     <div class="form-group">
       <label>${skillLabels[k]||k} <span style="color:var(--cyan);font-family:var(--font-mono)">${v}%</span></label>
-      <input type="range" id="skill-${k}" value="${v}" min="0" max="100" style="width:100%;accent-color:var(--cyan)" oninput="document.querySelector('label[for=skill-${k}] span').textContent=this.value+'%'" />
+      <input type="range" id="skill-${k}" value="${v}" min="0" max="100" style="width:100%;accent-color:var(--cyan)" oninput="this.previousElementSibling.querySelector('span').textContent=this.value+'%'" />
     </div>
   `).join('');
-  openModal('Update Cyber Skills', fields, [{label:'Save Skills', action: async () => {
+  openModal('Update Optional Track Skills', fields, [{label:'Save Skills', action: async () => {
     Object.keys(cyberSkills).forEach(k => {
       cyberSkills[k] = parseInt(document.getElementById(`skill-${k}`)?.value) || 0;
     });
@@ -1570,9 +1660,9 @@ function renderProjects() {
 
 window.showAddProjectModal = function() {
   openModal('Add Project', `
-    <div class="form-group"><label>Project Title *</label><input type="text" id="m-proj-title" placeholder="e.g. Network Packet Analyzer" /></div>
+    <div class="form-group"><label>Project Title *</label><input type="text" id="m-proj-title" placeholder="e.g. Line Follower Robot or DSP Filter Design" /></div>
     <div class="form-group"><label>Description</label><textarea id="m-proj-desc" rows="3" placeholder="Brief description of the project..."></textarea></div>
-    <div class="form-group"><label>Tech Stack (comma separated)</label><input type="text" id="m-proj-tech" placeholder="Python, Scapy, Linux" /></div>
+    <div class="form-group"><label>Tech Stack (comma separated)</label><input type="text" id="m-proj-tech" placeholder="Arduino, MATLAB, Verilog, C" /></div>
     <div class="form-row">
       <div class="form-group"><label>GitHub URL</label><input type="text" id="m-proj-github" placeholder="https://github.com/..." /></div>
       <div class="form-group"><label>Live URL</label><input type="text" id="m-proj-live" placeholder="https://..." /></div>
@@ -1635,7 +1725,7 @@ window.showAddInternshipModal = function() {
   openModal('Add Internship', `
     <div class="form-row">
       <div class="form-group"><label>Company *</label><input type="text" id="m-int-company" placeholder="e.g. Cisco, DRDO" /></div>
-      <div class="form-group"><label>Role *</label><input type="text" id="m-int-role" placeholder="e.g. Security Intern" /></div>
+      <div class="form-group"><label>Role *</label><input type="text" id="m-int-role" placeholder="e.g. Embedded Systems Intern" /></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Type</label>
@@ -1676,13 +1766,133 @@ window.deleteInternship = async function(id) {
 // ============================================================
 // ANALYTICS
 // ============================================================
-function loadAnalytics() {
+const ANALYTICS_CHART_KEYS = ['weeklyStudy', 'attendance', 'monthly', 'skillGrowth', 'habit', 'cgpa'];
+let selectedAnalyticsChart = 'weeklyStudy';
+
+async function loadAnalytics() {
+  syncAnalyticsChartPicker(selectedAnalyticsChart);
+  await loadAnalyticsSourceData();
   renderWeeklyStudyChart();
   renderAttendanceChart();
   renderMonthlyProgressChart();
   renderSkillGrowthChart();
   renderHabitChart();
   renderCgpaTrendChart();
+  resizeVisibleAnalyticsCharts();
+}
+
+async function loadAnalyticsSourceData() {
+  if (!currentUser) return;
+  try {
+    const [subjectsSnap, sessionsSnap, habitsSnap] = await Promise.all([
+      db.collection('users').doc(currentUser.uid).collection('subjects').get(),
+      db.collection('users').doc(currentUser.uid).collection('studySessions').get(),
+      db.collection('users').doc(currentUser.uid).collection('habits').get()
+    ]);
+    subjects = subjectsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    studySessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    habits = habitsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    console.warn('Unable to load analytics data', e);
+  }
+}
+
+window.selectAnalyticsChart = function(key) {
+  syncAnalyticsChartPicker(key);
+  resizeVisibleAnalyticsCharts();
+};
+
+function syncAnalyticsChartPicker(key = selectedAnalyticsChart) {
+  selectedAnalyticsChart = ANALYTICS_CHART_KEYS.includes(key) ? key : 'weeklyStudy';
+  const select = document.getElementById('analytics-chart-select');
+  if (select) select.value = selectedAnalyticsChart;
+  document.querySelectorAll('[data-analytics-card]').forEach(card => {
+    card.classList.toggle('active', card.dataset.analyticsCard === selectedAnalyticsChart);
+  });
+}
+
+function resizeVisibleAnalyticsCharts() {
+  requestAnimationFrame(() => {
+    Object.entries(charts).forEach(([key, chart]) => {
+      const card = document.querySelector(`[data-analytics-card="${key}"]`);
+      const isVisible = !card || window.getComputedStyle(card).display !== 'none';
+      if (isVisible) chart.resize();
+    });
+  });
+}
+
+window.addEventListener('resize', () => {
+  if (document.getElementById('page-analytics')?.classList.contains('active')) {
+    syncAnalyticsChartPicker(selectedAnalyticsChart);
+    resizeVisibleAnalyticsCharts();
+  }
+});
+
+function getLastSevenDayKeys() {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().split('T')[0];
+  });
+}
+
+function getWeeklyStudyHours() {
+  const dayKeys = getLastSevenDayKeys();
+  return dayKeys.map(key => {
+    const minutes = studySessions
+      .filter(s => (s.date || '').slice(0, 10) === key)
+      .reduce((sum, s) => sum + (parseFloat(s.duration) || 0), 0);
+    return +(minutes / 60).toFixed(1);
+  });
+}
+
+function getMonthlyStudyMinutes() {
+  const monthKeys = getLastSixMonthKeys();
+  return monthKeys.map(key => studySessions
+    .filter(s => (s.date || '').slice(0, 7) === key)
+    .reduce((sum, s) => sum + (parseFloat(s.duration) || 0), 0));
+}
+
+function getWeeklyHabitCompletions() {
+  const dayKeys = getLastSevenDayKeys();
+  return dayKeys.map(key => habits.reduce((sum, h) => sum + ((h.completedDates || []).includes(key) ? 1 : 0), 0));
+}
+
+function getLastSixMonthKeys() {
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
+    return d.toISOString().slice(0, 7);
+  });
+}
+
+function getLastSixMonthLabels() {
+  return getLastSixMonthKeys().map(key => {
+    const [year, month] = key.split('-').map(Number);
+    return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'short' });
+  });
+}
+
+function getCurrentProgressSeries(value) {
+  const safe = Math.max(0, Math.min(100, Number(value) || 0));
+  return [0, 0, 0, 0, 0, safe];
+}
+
+function getECEProgressPercent() {
+  if (!subjects.length) return 0;
+  const internalProgress = subjects.reduce((sum, s) => sum + ((parseFloat(s.internalMark) || 0) / 30 * 100), 0) / subjects.length;
+  const attendanceProgress = subjects.reduce((sum, s) => sum + (parseFloat(s.attendance) || 0), 0) / subjects.length;
+  return Math.round((internalProgress + attendanceProgress) / 2);
+}
+
+function getOptionalTrackProgressPercent() {
+  const values = Object.values(cyberSkills).map(v => parseFloat(v) || 0);
+  return values.length ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : 0;
+}
+
+function getCgpaTrendData() {
+  const current = parseFloat(userProfile.cgpa) || 0;
+  return [0, 0, 0, 0, 0, current];
 }
 
 function renderWeeklyStudyChart() {
@@ -1691,7 +1901,7 @@ function renderWeeklyStudyChart() {
   const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   charts.weeklyStudy = new Chart(ctx, {
     type: 'bar',
-    data: { labels: days, datasets: [{ label: 'Study Hours', data: days.map(() => +(Math.random()*3+0.5).toFixed(1)), backgroundColor: 'rgba(0,245,196,0.3)', borderColor: 'rgba(0,245,196,0.9)', borderWidth: 2, borderRadius: 6 }] },
+    data: { labels: days, datasets: [{ label: 'Study Hours', data: getWeeklyStudyHours(), backgroundColor: 'rgba(0,245,196,0.3)', borderColor: 'rgba(0,245,196,0.9)', borderWidth: 2, borderRadius: 6 }] },
     options: getChartOptions('Hours')
   });
 }
@@ -1699,37 +1909,37 @@ function renderWeeklyStudyChart() {
 function renderAttendanceChart() {
   const ctx = document.getElementById('attendanceChart'); if (!ctx) return;
   destroyChart('attendance');
-  const labels = subjects.length ? subjects.map(s=>s.name?.substring(0,8)||'Sub') : ['DSP','VLSI','CN','MP','EC'];
-  const data = subjects.length ? subjects.map(s=>parseFloat(s.attendance)||0) : [85,72,90,68,78];
+  const labels = subjects.length ? subjects.map(s=>s.name?.substring(0,8)||'Sub') : ['No Subjects'];
+  const data = subjects.length ? subjects.map(s=>parseFloat(s.attendance)||0) : [0];
   charts.attendance = new Chart(ctx, {
     type: 'doughnut',
     data: { labels, datasets: [{ data, backgroundColor: ['rgba(0,245,196,0.7)','rgba(168,85,247,0.7)','rgba(59,130,246,0.7)','rgba(249,115,22,0.7)','rgba(34,197,94,0.7)'], borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' }] },
-    options: { responsive: true, plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } } } }
+    options: getDoughnutChartOptions()
   });
 }
 
 function renderMonthlyProgressChart() {
   const ctx = document.getElementById('monthlyProgressChart'); if (!ctx) return;
   destroyChart('monthly');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun'];
+  const months = getLastSixMonthLabels();
   charts.monthly = new Chart(ctx, {
     type: 'line',
-    data: { labels: months, datasets: [{ label: 'Study Score', data: months.map(() => Math.floor(Math.random()*30+60)), borderColor: 'rgba(168,85,247,0.9)', backgroundColor: 'rgba(168,85,247,0.1)', borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: 'var(--purple)' }] },
-    options: getChartOptions('Score')
+    data: { labels: months, datasets: [{ label: 'Study Minutes', data: getMonthlyStudyMinutes(), borderColor: 'rgba(168,85,247,0.9)', backgroundColor: 'rgba(168,85,247,0.1)', borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: 'var(--purple)' }] },
+    options: getChartOptions('Minutes')
   });
 }
 
 function renderSkillGrowthChart() {
   const ctx = document.getElementById('skillGrowthChart'); if (!ctx) return;
   destroyChart('skillGrowth');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun'];
+  const months = getLastSixMonthLabels();
   charts.skillGrowth = new Chart(ctx, {
     type: 'line',
     data: { labels: months, datasets: [
-      { label: 'Cybersecurity', data: [10,20,28,38,45,55], borderColor: 'rgba(0,245,196,0.9)', borderWidth: 2, tension: 0.4, fill: false, pointBackgroundColor: 'var(--cyan)' },
-      { label: 'AI/ML', data: [5,10,18,25,35,42], borderColor: 'rgba(168,85,247,0.9)', borderWidth: 2, tension: 0.4, fill: false, pointBackgroundColor: 'var(--purple)' }
+      { label: 'ECE Progress', data: getCurrentProgressSeries(getECEProgressPercent()), borderColor: 'rgba(0,245,196,0.9)', borderWidth: 2, tension: 0.4, fill: false, pointBackgroundColor: 'var(--cyan)' },
+      { label: 'Optional Track', data: getCurrentProgressSeries(isOptionalTrackEnabled() ? getOptionalTrackProgressPercent() : 0), borderColor: 'rgba(168,85,247,0.9)', borderWidth: 2, tension: 0.4, fill: false, pointBackgroundColor: 'var(--purple)' }
     ] },
-    options: getChartOptions('Skill %')
+    options: getChartOptions('Progress %')
   });
 }
 
@@ -1739,7 +1949,7 @@ function renderHabitChart() {
   const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   charts.habit = new Chart(ctx, {
     type: 'bar',
-    data: { labels: days, datasets: [{ label: 'Habits Completed', data: days.map(() => Math.floor(Math.random()*5+1)), backgroundColor: 'rgba(34,197,94,0.5)', borderColor: 'rgba(34,197,94,0.9)', borderWidth: 2, borderRadius: 4 }] },
+    data: { labels: days, datasets: [{ label: 'Habits Completed', data: getWeeklyHabitCompletions(), backgroundColor: 'rgba(34,197,94,0.5)', borderColor: 'rgba(34,197,94,0.9)', borderWidth: 2, borderRadius: 4 }] },
     options: getChartOptions('Habits')
   });
 }
@@ -1750,18 +1960,41 @@ function renderCgpaTrendChart() {
   const sems = ['Sem 1','Sem 2','Sem 3','Sem 4','Sem 5','Sem 6'];
   charts.cgpa = new Chart(ctx, {
     type: 'line',
-    data: { labels: sems, datasets: [{ label: 'CGPA', data: [7.2,7.8,8.1,8.3,8.5,parseFloat(userProfile.cgpa)||8.5], borderColor: 'rgba(249,115,22,0.9)', backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: 'var(--orange)' }] },
+    data: { labels: sems, datasets: [{ label: 'CGPA', data: getCgpaTrendData(), borderColor: 'rgba(249,115,22,0.9)', backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: 'var(--orange)' }] },
     options: getChartOptions('CGPA')
   });
 }
 
 function getChartOptions(yLabel) {
+  const compact = window.matchMedia('(max-width: 480px)').matches;
   return {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } } },
+    layout: { padding: compact ? 2 : 6 },
+    plugins: { legend: { labels: { boxWidth: compact ? 8 : 12, color: 'rgba(255,255,255,0.6)', font: { size: compact ? 9 : 10 } } } },
     scales: {
-      x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } } },
-      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } }, title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.3)', font: { size: 9 } } }
+      x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { autoSkip: true, maxRotation: 0, color: 'rgba(255,255,255,0.5)', font: { size: compact ? 9 : 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { maxTicksLimit: compact ? 4 : 6, color: 'rgba(255,255,255,0.5)', font: { size: compact ? 9 : 10 } }, title: { display: !compact, text: yLabel, color: 'rgba(255,255,255,0.3)', font: { size: 9 } } }
+    }
+  };
+}
+
+function getDoughnutChartOptions() {
+  const compact = window.matchMedia('(max-width: 480px)').matches;
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: compact ? '62%' : '55%',
+    layout: { padding: compact ? 4 : 8 },
+    plugins: {
+      legend: {
+        position: compact ? 'bottom' : 'top',
+        labels: {
+          boxWidth: compact ? 8 : 12,
+          padding: compact ? 8 : 10,
+          color: 'rgba(255,255,255,0.6)',
+          font: { size: compact ? 9 : 10 }
+        }
+      }
     }
   };
 }
@@ -1777,7 +2010,17 @@ function clearAllCharts() {
 // OPENROUTER API
 // ============================================================
 async function callOpenRouter(prompt, maxTokens = 1000) {
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
+  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
+    const res = await fetch(AI_API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: prompt, maxTokens })
+    });
+    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
+    const data = await res.json().catch(() => null);
+    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || '';
+  }
+  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
     throw new Error('OpenRouter API key not configured');
   }
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -1800,7 +2043,18 @@ async function callOpenRouter(prompt, maxTokens = 1000) {
 }
 
 async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens = 1000) {
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
+  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
+    const latestMessage = [...history].reverse().find(m => m.role === 'user')?.content || '';
+    const res = await fetch(AI_API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: latestMessage, systemPrompt, history, model, maxTokens })
+    });
+    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
+    const data = await res.json().catch(() => null);
+    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || 'No response received.';
+  }
+  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
     throw new Error('OpenRouter API key not configured. Please add your key in firebase.js');
   }
   const messages = [{ role: 'system', content: systemPrompt }, ...history];

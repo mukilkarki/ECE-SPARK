@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="CREO ECE Career OS — Your complete ECE to Cybersecurity + AI career operating system" />
+  <meta name="description" content="CREO ECE Career OS — Your complete Electronics and Communication Engineering academic and career operating system" />
   <meta name="theme-color" content="#0a0a0f" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -42,7 +42,7 @@
     <div class="auth-brand">
       <span class="brand-icon">⚡</span>
       <span class="brand-name">CREO <em>ECE</em></span>
-      <p class="brand-sub">ECE → Cybersecurity + AI Engineer</p>
+      <p class="brand-sub">Electronics & Communication Engineering</p>
     </div>
 
     <div id="login-form" class="auth-card">
@@ -81,7 +81,7 @@
             <option>5</option><option>6</option><option>7</option><option>8</option>
           </select>
         </div>
-        <div class="form-group"><label>Current CGPA</label><input type="number" id="signup-cgpa" placeholder="e.g. 8.5" min="0" max="10" step="0.1" /></div>
+        <div class="form-group"><label>Current CGPA</label><input type="number" id="signup-cgpa" placeholder="0.0" min="0" max="10" step="0.1" /></div>
       </div>
       <div class="form-group"><label>Email</label><input type="email" id="signup-email" placeholder="you@college.edu" /></div>
       <div class="form-group">
@@ -131,7 +131,7 @@
       <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=ECE&background=00f5c4&color=0a0a0f&bold=true" alt="Avatar" />
       <div>
         <div class="sidebar-name" id="sidebar-name">Student</div>
-        <div class="sidebar-role">ECE → Cyber + AI</div>
+        <div class="sidebar-role" id="sidebar-role">ECE Core Track</div>
       </div>
     </div>
     <div class="sidebar-section">
@@ -144,9 +144,9 @@
     <div class="sidebar-section">
       <div class="sidebar-label">Resources</div>
       <a class="sidebar-item" onclick="navigate('notes')" data-page="notes"><i data-lucide="file-text"></i><span>Notes System</span></a>
-      <a class="sidebar-item" onclick="navigate('cybersec')" data-page="cybersec"><i data-lucide="shield"></i><span>Cybersecurity Hub</span></a>
+      <a class="sidebar-item hidden" data-optional-track onclick="navigate('cybersec')" data-page="cybersec"><i data-lucide="shield"></i><span>Cyber/AI Hub</span></a>
       <a class="sidebar-item" onclick="navigate('placement')" data-page="placement"><i data-lucide="briefcase"></i><span>Placement Hub</span></a>
-      <a class="sidebar-item" onclick="navigate('analytics')" data-page="analytics"><i data-lucide="bar-chart-2"></i><span>Analytics</span></a>
+      <a class="sidebar-item" onclick="navigate('analytics')" data-page="analytics"><i data-lucide="bar-chart-2"></i><span>Stats</span></a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Account</div>
@@ -204,8 +204,8 @@
           <div class="dash-card-header"><span class="card-icon yellow">📄</span><span class="card-title">Recent Notes</span><button class="card-action" onclick="navigate('notes')">View All</button></div>
           <div id="dash-notes" class="notes-mini-list"><div class="empty-state-sm">No notes yet</div></div>
         </div>
-        <div class="dash-card glass">
-          <div class="dash-card-header"><span class="card-icon cyan">🛡️</span><span class="card-title">Cyber Skills</span><button class="card-action" onclick="navigate('cybersec')">View All</button></div>
+        <div class="dash-card glass hidden" data-optional-track>
+          <div class="dash-card-header"><span class="card-icon cyan">🛡️</span><span class="card-title">Optional Cyber/AI Skills</span><button class="card-action" onclick="navigate('cybersec')">View All</button></div>
           <div id="dash-cyber-skills" class="skill-mini-list"></div>
         </div>
         <div class="dash-card glass">
@@ -293,7 +293,7 @@
     <!-- AI ASSISTANT -->
     <section id="page-ai-assistant" class="page hidden">
       <div class="page-header">
-        <div><h1>AI Study Assistant</h1><p class="page-sub">Powered by OpenRouter · ECE + Cyber + AI Specialist</p></div>
+        <div><h1>AI Study Assistant</h1><p class="page-sub">ECE-first study help · Optional Cyber/AI guidance</p></div>
       </div>
       <div class="ai-layout">
         <div class="ai-quick-prompts glass">
@@ -301,7 +301,7 @@
           <div class="quick-prompt-grid">
             <button class="qp-btn" onclick="quickPrompt('summarize')"><i data-lucide="file-text"></i>Summarize Notes</button>
             <button class="qp-btn" onclick="quickPrompt('explain_ece')"><i data-lucide="cpu"></i>Explain ECE Concept</button>
-            <button class="qp-btn" onclick="quickPrompt('explain_cyber')"><i data-lucide="shield"></i>Explain Cybersecurity</button>
+            <button class="qp-btn" onclick="quickPrompt('explain_cyber')"><i data-lucide="shield"></i>Optional Cyber/AI</button>
             <button class="qp-btn" onclick="quickPrompt('quiz')"><i data-lucide="help-circle"></i>Generate Quiz</button>
             <button class="qp-btn" onclick="quickPrompt('interview')"><i data-lucide="user-check"></i>Interview Questions</button>
             <button class="qp-btn" onclick="quickPrompt('roadmap')"><i data-lucide="map"></i>Career Roadmap</button>
@@ -324,7 +324,7 @@
             <div class="ai-welcome-msg">
               <div class="ai-avatar">🤖</div>
               <div class="ai-bubble">
-                <p>Hey! I'm your <strong>CREO AI Assistant</strong> — specialized in ECE, Cybersecurity, and AI topics.</p>
+                <p>Hey! I'm your <strong>CREO AI Assistant</strong> — focused on ECE subjects, labs, projects, and placements. Cybersecurity and AI Engineering are optional tracks when you need them.</p>
                 <p>I can help you with study notes, cybersecurity concepts, AI/ML topics, interview prep, and career guidance.</p>
                 <p>What would you like to learn today?</p>
               </div>
@@ -332,7 +332,7 @@
           </div>
           <div class="ai-chat-input-area">
             <div class="ai-input-wrapper">
-              <textarea id="ai-input" placeholder="Ask anything about ECE, Cybersecurity, AI..." rows="1" onkeydown="handleAIEnter(event)" oninput="autoResizeTextarea(this)"></textarea>
+              <textarea id="ai-input" placeholder="Ask about ECE subjects, labs, projects, exams, placements, or optional Cyber/AI..." rows="1" onkeydown="handleAIEnter(event)" oninput="autoResizeTextarea(this)"></textarea>
               <button class="ai-send-btn" onclick="sendAIMessage()" id="ai-send-btn"><i data-lucide="send"></i></button>
             </div>
             <div class="ai-disclaimer">AI responses may contain errors. Always verify critical information.</div>
@@ -369,7 +369,7 @@
 
     <!-- CYBERSECURITY HUB -->
     <section id="page-cybersec" class="page hidden">
-      <div class="page-header"><h1>Cybersecurity Hub</h1><p class="page-sub">Roadmap · Certs · CTF · Skills</p></div>
+      <div class="page-header"><h1>Optional Cyber/AI Hub</h1><p class="page-sub">Enable only if this is part of your ECE career path</p></div>
       <div class="cyber-tabs">
         <button class="cyber-tab active" onclick="switchCyberTab('roadmap')">🗺️ Roadmap</button>
         <button class="cyber-tab" onclick="switchCyberTab('certs')">🏆 Certifications</button>
@@ -505,7 +505,7 @@
       <div id="placement-projects" class="placement-tab-content hidden">
         <div class="tab-action-header"><h3>Project Portfolio</h3><button class="btn-primary" onclick="showAddProjectModal()"><i data-lucide="plus"></i> Add Project</button></div>
         <div id="projects-grid" class="projects-grid"></div>
-        <div id="projects-empty" class="empty-state hidden"><div class="empty-icon">💻</div><h3>No Projects Yet</h3><p>Add your ECE/Cybersecurity projects</p></div>
+        <div id="projects-empty" class="empty-state hidden"><div class="empty-icon">💻</div><h3>No Projects Yet</h3><p>Add your ECE projects; optional Cyber/AI projects can be added too</p></div>
       </div>
       <div id="placement-internships" class="placement-tab-content hidden">
         <div class="tab-action-header"><h3>Internship Tracker</h3><button class="btn-primary" onclick="showAddInternshipModal()"><i data-lucide="plus"></i> Add Internship</button></div>
@@ -516,14 +516,25 @@
 
     <!-- ANALYTICS -->
     <section id="page-analytics" class="page hidden">
-      <div class="page-header"><h1>Analytics</h1><p class="page-sub">Track your growth over time</p></div>
+      <div class="page-header"><h1>Stats</h1><p class="page-sub">Track your growth over time</p></div>
+      <div class="analytics-mobile-picker glass">
+        <label for="analytics-chart-select">Choose stat</label>
+        <select id="analytics-chart-select" onchange="selectAnalyticsChart(this.value)">
+          <option value="weeklyStudy">Weekly Study Hours</option>
+          <option value="attendance">Subject Attendance</option>
+          <option value="monthly">Monthly Progress</option>
+          <option value="skillGrowth">ECE & Optional Track Progress</option>
+          <option value="habit">Habit Completion Rate</option>
+          <option value="cgpa">CGPA Trend</option>
+        </select>
+      </div>
       <div class="analytics-grid">
-        <div class="analytics-card glass span-2"><h4>Weekly Study Hours</h4><canvas id="weeklyStudyChart" height="160"></canvas></div>
-        <div class="analytics-card glass"><h4>Subject Attendance</h4><canvas id="attendanceChart" height="200"></canvas></div>
-        <div class="analytics-card glass"><h4>Monthly Progress</h4><canvas id="monthlyProgressChart" height="200"></canvas></div>
-        <div class="analytics-card glass span-2"><h4>Skill Growth Timeline</h4><canvas id="skillGrowthChart" height="160"></canvas></div>
-        <div class="analytics-card glass"><h4>Habit Completion Rate</h4><canvas id="habitChart" height="200"></canvas></div>
-        <div class="analytics-card glass"><h4>CGPA Trend</h4><canvas id="cgpaTrendChart" height="200"></canvas></div>
+        <div class="analytics-card glass span-2 active" data-analytics-card="weeklyStudy"><h4>Weekly Study Hours</h4><div class="analytics-chart analytics-chart-wide"><canvas id="weeklyStudyChart"></canvas></div></div>
+        <div class="analytics-card glass" data-analytics-card="attendance"><h4>Subject Attendance</h4><div class="analytics-chart"><canvas id="attendanceChart"></canvas></div></div>
+        <div class="analytics-card glass" data-analytics-card="monthly"><h4>Monthly Progress</h4><div class="analytics-chart"><canvas id="monthlyProgressChart"></canvas></div></div>
+        <div class="analytics-card glass span-2" data-analytics-card="skillGrowth"><h4>ECE & Optional Track Progress</h4><div class="analytics-chart analytics-chart-wide"><canvas id="skillGrowthChart"></canvas></div></div>
+        <div class="analytics-card glass" data-analytics-card="habit"><h4>Habit Completion Rate</h4><div class="analytics-chart"><canvas id="habitChart"></canvas></div></div>
+        <div class="analytics-card glass" data-analytics-card="cgpa"><h4>CGPA Trend</h4><div class="analytics-chart"><canvas id="cgpaTrendChart"></canvas></div></div>
       </div>
     </section>
 
@@ -538,7 +549,7 @@
           </div>
           <div id="profile-name-display" class="profile-name"></div>
           <div id="profile-email-display" class="profile-email"></div>
-          <div class="profile-badges"><span class="badge cyber">ECE Student</span><span class="badge ai">Cyber + AI Path</span></div>
+          <div class="profile-badges"><span class="badge cyber" id="profile-track-badge">ECE Core Track</span><span class="badge ai hidden" id="profile-optional-badge">Optional Cyber/AI Enabled</span></div>
         </div>
         <div class="profile-form glass">
           <h3>Edit Profile</h3>
@@ -556,10 +567,14 @@
           </div>
           <div class="form-group"><label>Career Goal</label>
             <select id="profile-goal-input">
-              <option value="cybersec">Cybersecurity Engineer</option>
-              <option value="ai_ml">AI/ML Engineer</option>
-              <option value="cyber_ai">Cybersecurity + AI (Both)</option>
+              <option value="ece_core">ECE Core Engineering</option>
+              <option value="embedded">Embedded Systems / IoT</option>
+              <option value="vlsi">VLSI / Semiconductor</option>
+              <option value="communication">Communication Systems</option>
               <option value="sde">Software Development Engineer</option>
+              <option value="cybersec">Optional: Cybersecurity Engineer</option>
+              <option value="ai_ml">Optional: AI Engineering</option>
+              <option value="cyber_ai">Optional: Cybersecurity + AI</option>
             </select>
           </div>
           <div class="form-group"><label>Bio</label><textarea id="profile-bio-input" rows="3" placeholder="Tell something about yourself..."></textarea></div>
@@ -579,7 +594,7 @@
     <button class="bnav-item active" onclick="navigate('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
     <button class="bnav-item" onclick="navigate('semester')" data-page="semester"><i data-lucide="book-open"></i><span>Semester</span></button>
     <button class="bnav-item ai-fab" onclick="navigate('ai-assistant')" data-page="ai-assistant"><i data-lucide="bot"></i><span>AI</span></button>
-    <button class="bnav-item" onclick="navigate('cybersec')" data-page="cybersec"><i data-lucide="shield"></i><span>Cyber</span></button>
+    <button class="bnav-item hidden" data-optional-track onclick="navigate('cybersec')" data-page="cybersec"><i data-lucide="shield"></i><span>Track</span></button>
     <button class="bnav-item" onclick="navigate('analytics')" data-page="analytics"><i data-lucide="bar-chart-2"></i><span>Stats</span></button>
   </nav>
 </div>

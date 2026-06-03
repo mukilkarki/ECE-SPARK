@@ -1099,12 +1099,49 @@ img { display: block; max-width: 100%; }
 .internship-status { padding: 3px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; align-self: flex-start; }
 
 /* ============================================================
-   ANALYTICS
+   ANALYTICS / STATS
    ============================================================ */
-.analytics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
-.analytics-card { padding: 1rem; }
-.analytics-card.span-2 { grid-column: 1 / -1; }
-.analytics-card h4 { font-size: 0.88rem; font-weight: 700; color: var(--text-2); margin-bottom: 0.75rem; }
+.analytics-mobile-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.analytics-mobile-picker label {
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.analytics-mobile-picker select {
+  min-height: 40px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.86rem;
+}
+.analytics-grid { display: grid; grid-template-columns: 1fr; gap: 0.7rem; }
+.analytics-card {
+  display: none;
+  padding: 0.75rem;
+  min-width: 0;
+  overflow: hidden;
+}
+.analytics-card.active { display: block; }
+.analytics-card.span-2 { grid-column: auto; }
+.analytics-card h4 { font-size: 0.8rem; font-weight: 700; color: var(--text-2); margin-bottom: 0.55rem; }
+.analytics-chart {
+  position: relative;
+  width: 100%;
+  height: clamp(132px, 38vw, 168px);
+  min-width: 0;
+}
+.analytics-chart-wide { height: clamp(138px, 40vw, 176px); }
+.analytics-chart canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+}
 
 /* ============================================================
    PROFILE
@@ -1215,7 +1252,14 @@ img { display: block; max-width: 100%; }
   .skills-container { grid-template-columns: 1fr 1fr; }
   .certs-grid { grid-template-columns: repeat(2, 1fr); }
   .profile-grid { grid-template-columns: 240px 1fr; }
-  .analytics-grid { grid-template-columns: repeat(2, 1fr); }
+  .analytics-mobile-picker { display: none; }
+  .analytics-grid { grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
+  .analytics-card, .analytics-card.active { display: block; }
+  .analytics-card { padding: 1rem; }
+  .analytics-card.span-2 { grid-column: 1 / -1; }
+  .analytics-card h4 { font-size: 0.88rem; margin-bottom: 0.75rem; }
+  .analytics-chart { height: 220px; }
+  .analytics-chart-wide { height: 190px; }
 }
 
 @media (min-width: 1200px) {
@@ -1224,6 +1268,8 @@ img { display: block; max-width: 100%; }
   .notes-grid { grid-template-columns: repeat(4, 1fr); }
   .subjects-grid { grid-template-columns: repeat(3, 1fr); }
   .analytics-grid { grid-template-columns: repeat(3, 1fr); }
+  .analytics-chart { height: 240px; }
+  .analytics-chart-wide { height: 200px; }
   .productivity-grid { grid-template-columns: repeat(3, 1fr); }
   .pomo-full { grid-column: 1; }
   .habits-full { grid-column: 2; }
