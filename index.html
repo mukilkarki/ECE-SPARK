@@ -318,6 +318,14 @@
               <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
             </select>
           </div>
+          <div class="ai-history-panel">
+            <div class="ai-history-header">
+              <h4>Chat History</h4>
+              <button class="history-action-btn" onclick="startNewAIChat()" title="Start new chat"><i data-lucide="plus"></i></button>
+            </div>
+            <div id="ai-history-list" class="ai-history-list"></div>
+            <button class="ai-clear-history-btn" onclick="clearAllAIChats()"><i data-lucide="trash-2"></i> Delete All History</button>
+          </div>
         </div>
         <div class="ai-chat-container glass">
           <div class="ai-chat-messages" id="ai-chat-messages">
