@@ -1732,7 +1732,7 @@ function renderAttendanceChart() {
   charts.attendance = new Chart(ctx, {
     type: 'doughnut',
     data: { labels, datasets: [{ data, backgroundColor: ['rgba(0,245,196,0.7)','rgba(168,85,247,0.7)','rgba(59,130,246,0.7)','rgba(249,115,22,0.7)','rgba(34,197,94,0.7)'], borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' }] },
-    options: { responsive: true, plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } } } }
+    options: getDoughnutChartOptions()
   });
 }
 
@@ -1784,12 +1784,35 @@ function renderCgpaTrendChart() {
 }
 
 function getChartOptions(yLabel) {
+  const compact = window.matchMedia('(max-width: 480px)').matches;
   return {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } } },
+    layout: { padding: compact ? 2 : 6 },
+    plugins: { legend: { labels: { boxWidth: compact ? 8 : 12, color: 'rgba(255,255,255,0.6)', font: { size: compact ? 9 : 10 } } } },
     scales: {
-      x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } } },
-      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } }, title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.3)', font: { size: 9 } } }
+      x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { autoSkip: true, maxRotation: 0, color: 'rgba(255,255,255,0.5)', font: { size: compact ? 9 : 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { maxTicksLimit: compact ? 4 : 6, color: 'rgba(255,255,255,0.5)', font: { size: compact ? 9 : 10 } }, title: { display: !compact, text: yLabel, color: 'rgba(255,255,255,0.3)', font: { size: 9 } } }
+    }
+  };
+}
+
+function getDoughnutChartOptions() {
+  const compact = window.matchMedia('(max-width: 480px)').matches;
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: compact ? '62%' : '55%',
+    layout: { padding: compact ? 4 : 8 },
+    plugins: {
+      legend: {
+        position: compact ? 'bottom' : 'top',
+        labels: {
+          boxWidth: compact ? 8 : 12,
+          padding: compact ? 8 : 10,
+          color: 'rgba(255,255,255,0.6)',
+          font: { size: compact ? 9 : 10 }
+        }
+      }
     }
   };
 }
