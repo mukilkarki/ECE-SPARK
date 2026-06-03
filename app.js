@@ -1704,14 +1704,50 @@ window.deleteInternship = async function(id) {
 // ============================================================
 // ANALYTICS
 // ============================================================
+const ANALYTICS_CHART_KEYS = ['weeklyStudy', 'attendance', 'monthly', 'skillGrowth', 'habit', 'cgpa'];
+let selectedAnalyticsChart = 'weeklyStudy';
+
 function loadAnalytics() {
+  syncAnalyticsChartPicker(selectedAnalyticsChart);
   renderWeeklyStudyChart();
   renderAttendanceChart();
   renderMonthlyProgressChart();
   renderSkillGrowthChart();
   renderHabitChart();
   renderCgpaTrendChart();
+  resizeVisibleAnalyticsCharts();
 }
+
+window.selectAnalyticsChart = function(key) {
+  syncAnalyticsChartPicker(key);
+  resizeVisibleAnalyticsCharts();
+};
+
+function syncAnalyticsChartPicker(key = selectedAnalyticsChart) {
+  selectedAnalyticsChart = ANALYTICS_CHART_KEYS.includes(key) ? key : 'weeklyStudy';
+  const select = document.getElementById('analytics-chart-select');
+  if (select) select.value = selectedAnalyticsChart;
+  document.querySelectorAll('[data-analytics-card]').forEach(card => {
+    card.classList.toggle('active', card.dataset.analyticsCard === selectedAnalyticsChart);
+  });
+}
+
+function resizeVisibleAnalyticsCharts() {
+  requestAnimationFrame(() => {
+    Object.entries(charts).forEach(([key, chart]) => {
+      const card = document.querySelector(`[data-analytics-card="${key}"]`);
+      const isVisible = !card || window.getComputedStyle(card).display !== 'none';
+      if (isVisible) chart.resize();
+    });
+  });
+}
+
+window.addEventListener('resize', () => {
+  if (document.getElementById('page-analytics')?.classList.contains('active')) {
+    syncAnalyticsChartPicker(selectedAnalyticsChart);
+    resizeVisibleAnalyticsCharts();
+  }
+});
 
 function renderWeeklyStudyChart() {
   const ctx = document.getElementById('weeklyStudyChart'); if (!ctx) return;
