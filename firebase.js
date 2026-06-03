@@ -1,0 +1,74 @@
+// ============================================================
+// CREO ECE Career OS — firebase.js
+// ⚠️  REPLACE ALL "YOUR_*" VALUES BEFORE DEPLOYING
+// ============================================================
+
+// ---- Firebase Config ----
+// Get from: Firebase Console → Project Settings → Your Apps → Web App
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAdUnNzLWp1h11KUPFDD0LciA-tBW5ez0Q",
+  authDomain: "ece-void-os.firebaseapp.com",
+  projectId: "ece-void-os",
+  storageBucket: "ece-void-os.firebasestorage.app",
+  messagingSenderId: "766661271652",
+  appId: "1:766661271652:web:b327d689721d5c432b7f71",
+  measurementId: "G-RHGCLXYEZ7"
+};
+
+// ---- OpenRouter----
+// Get free key from: https://openrouter.ai/keys
+// Free models: google/gemini-2.0-flash-exp:free, meta-llama/llama-3.1-8b-instruct:free
+const AI_API_ENDPOINT =
+"https://ecespark.mukilkarkimail.workers.dev";
+
+const response = await fetch(AI_API_ENDPOINT,{
+  method:"POST",
+  headers:{
+    "Content-Type":"application/json"
+  },
+  body:JSON.stringify({
+    message:"Hello"
+  })
+});
+
+// ---- Cloudinary Config ----
+// Sign up at https://cloudinary.com (free 25GB)
+// Create an UNSIGNED upload preset in Settings → Upload
+const CLOUDINARY_CLOUD_NAME   = "dk3e0trh6";
+const CLOUDINARY_UPLOAD_PRESET = "ECE SPARK";
+
+// ============================================================
+// Firestore Security Rules — paste in Firebase Console
+// ============================================================
+/*
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /{subcollection}/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
+*/
+
+// ============================================================
+// Firestore Database Structure (reference only)
+// ============================================================
+/*
+users/{uid}/
+  ├── (root doc)      → { name, email, college, branch, semester, cgpa,
+  │                       targetCgpa, goal, bio, avatarUrl, roadmapProgress,
+  │                       cyberSkills, createdAt }
+  ├── subjects/       → [{ name, code, credits, internalMark, attendance, examDate }]
+  ├── studySessions/  → [{ date, subject, duration, pomodoroCount, notes }]
+  ├── habits/         → [{ name, icon, streak, completedDates[], targetDays }]
+  ├── notes/          → [{ title, subject, type, cloudinaryUrl, publicId, tags[] }]
+  ├── certifications/ → [{ name, provider, status, completedDate, credentialUrl, category }]
+  ├── internships/    → [{ company, role, type, status, startDate, endDate, stipend }]
+  ├── projects/       → [{ title, description, techStack[], githubUrl, liveUrl, status }]
+  └── ctfChallenges/  → [{ name, platform, category, points, solved, date }]
+*/

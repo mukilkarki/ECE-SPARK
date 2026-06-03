@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="CREO ECE Career OS — Your complete ECE to Cybersecurity + AI career operating system" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CREO ECE" />
+  <title>CREO ECE Career OS</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash" class="splash">
+  <div class="splash-inner">
+    <div class="splash-logo">
+      <div class="splash-icon">⚡</div>
+      <div class="splash-wordmark">CREO<span>ECE</span></div>
+    </div>
+    <div class="splash-tagline">Career Operating System</div>
+    <div class="splash-loader"><div class="loader-bar"></div></div>
+  </div>
+</div>
+
+<!-- AUTH -->
+<div id="auth-screen" class="auth-screen hidden">
+  <div class="auth-bg">
+    <div class="auth-orb orb-1"></div>
+    <div class="auth-orb orb-2"></div>
+    <div class="auth-orb orb-3"></div>
+  </div>
+  <div class="auth-container">
+    <div class="auth-brand">
+      <span class="brand-icon">⚡</span>
+      <span class="brand-name">CREO <em>ECE</em></span>
+      <p class="brand-sub">ECE → Cybersecurity + AI Engineer</p>
+    </div>
+
+    <div id="login-form" class="auth-card">
+      <h2>Welcome Back</h2>
+      <p class="auth-sub">Sign in to continue your journey</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@college.edu" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-with-icon">
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+          <button class="toggle-pass" onclick="togglePassword('login-password')"><i data-lucide="eye"></i></button>
+        </div>
+      </div>
+      <button class="btn-auth" onclick="loginUser()"><span>Sign In</span><i data-lucide="arrow-right"></i></button>
+      <div class="auth-links">
+        <a onclick="showForgotPassword()">Forgot Password?</a>
+        <a onclick="showSignup()">Create Account →</a>
+      </div>
+      <div id="login-error" class="auth-error hidden"></div>
+    </div>
+
+    <div id="signup-form" class="auth-card hidden">
+      <h2>Create Account</h2>
+      <p class="auth-sub">Start your ECE career journey</p>
+      <div class="form-row">
+        <div class="form-group"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your name" /></div>
+        <div class="form-group"><label>College</label><input type="text" id="signup-college" placeholder="College name" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Semester</label>
+          <select id="signup-semester"><option value="">Select</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+            <option>5</option><option>6</option><option>7</option><option>8</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Current CGPA</label><input type="number" id="signup-cgpa" placeholder="e.g. 8.5" min="0" max="10" step="0.1" /></div>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="signup-email" placeholder="you@college.edu" /></div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-with-icon">
+          <input type="password" id="signup-password" placeholder="Min 8 characters" autocomplete="new-password" />
+          <button class="toggle-pass" onclick="togglePassword('signup-password')"><i data-lucide="eye"></i></button>
+        </div>
+      </div>
+      <button class="btn-auth" onclick="signupUser()"><span>Create Account</span><i data-lucide="arrow-right"></i></button>
+      <div class="auth-links"><a onclick="showLogin()">Already have an account? Sign In</a></div>
+      <div id="signup-error" class="auth-error hidden"></div>
+    </div>
+
+    <div id="forgot-form" class="auth-card hidden">
+      <h2>Reset Password</h2>
+      <p class="auth-sub">We'll send a reset link to your email</p>
+      <div class="form-group"><label>Email</label><input type="email" id="forgot-email" placeholder="you@college.edu" /></div>
+      <button class="btn-auth" onclick="resetPassword()"><span>Send Reset Link</span><i data-lucide="mail"></i></button>
+      <div class="auth-links"><a onclick="showLogin()">← Back to Sign In</a></div>
+      <div id="forgot-msg" class="auth-error hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="app hidden">
+
+  <header class="app-header">
+    <button class="menu-btn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+    <div class="header-brand"><span class="brand-icon-sm">⚡</span><span>CREO <em>ECE</em></span></div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="toggleTheme()"><i data-lucide="sun" id="theme-icon"></i></button>
+      <button class="icon-btn" onclick="showNotifications()">
+        <i data-lucide="bell"></i><span class="notif-dot hidden" id="notif-dot"></span>
+      </button>
+      <button class="avatar-btn" onclick="navigate('profile')">
+        <img id="header-avatar" src="https://ui-avatars.com/api/?name=ECE&background=00f5c4&color=0a0a0f&bold=true" alt="Profile" />
+      </button>
+    </div>
+  </header>
+
+  <div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-profile">
+      <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=ECE&background=00f5c4&color=0a0a0f&bold=true" alt="Avatar" />
+      <div>
+        <div class="sidebar-name" id="sidebar-name">Student</div>
+        <div class="sidebar-role">ECE → Cyber + AI</div>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Main</div>
+      <a class="sidebar-item active" onclick="navigate('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a class="sidebar-item" onclick="navigate('semester')" data-page="semester"><i data-lucide="book-open"></i><span>Semester Tracker</span></a>
+      <a class="sidebar-item" onclick="navigate('productivity')" data-page="productivity"><i data-lucide="timer"></i><span>Productivity</span></a>
+      <a class="sidebar-item" onclick="navigate('ai-assistant')" data-page="ai-assistant"><i data-lucide="bot"></i><span>AI Assistant</span><span class="badge-new">AI</span></a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Resources</div>
+      <a class="sidebar-item" onclick="navigate('notes')" data-page="notes"><i data-lucide="file-text"></i><span>Notes System</span></a>
+      <a class="sidebar-item" onclick="navigate('cybersec')" data-page="cybersec"><i data-lucide="shield"></i><span>Cybersecurity Hub</span></a>
+      <a class="sidebar-item" onclick="navigate('placement')" data-page="placement"><i data-lucide="briefcase"></i><span>Placement Hub</span></a>
+      <a class="sidebar-item" onclick="navigate('analytics')" data-page="analytics"><i data-lucide="bar-chart-2"></i><span>Analytics</span></a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Account</div>
+      <a class="sidebar-item" onclick="navigate('profile')" data-page="profile"><i data-lucide="user"></i><span>Profile</span></a>
+      <a class="sidebar-item logout-item" onclick="logoutUser()"><i data-lucide="log-out"></i><span>Sign Out</span></a>
+    </div>
+  </nav>
+
+  <main class="main-content" id="main-content">
+
+    <!-- DASHBOARD -->
+    <section id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <h1 id="welcome-text">Good Morning! 👋</h1>
+          <p class="page-sub" id="welcome-date">Loading...</p>
+        </div>
+        <button class="btn-primary sm" onclick="navigate('ai-assistant')"><i data-lucide="bot"></i> Ask AI</button>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card glass span-2">
+          <div class="dash-card-header"><span class="card-icon cyan">⚡</span><span class="card-title">Your Progress</span></div>
+          <div class="stats-row">
+            <div class="stat-item"><div class="stat-val" id="dash-cgpa">—</div><div class="stat-lbl">CGPA</div></div>
+            <div class="stat-divider"></div>
+            <div class="stat-item"><div class="stat-val" id="dash-sem">—</div><div class="stat-lbl">Semester</div></div>
+            <div class="stat-divider"></div>
+            <div class="stat-item"><div class="stat-val" id="dash-streak">0🔥</div><div class="stat-lbl">Day Streak</div></div>
+            <div class="stat-divider"></div>
+            <div class="stat-item"><div class="stat-val" id="dash-attendance">—%</div><div class="stat-lbl">Avg Attendance</div></div>
+          </div>
+        </div>
+        <div class="dash-card glass">
+          <div class="dash-card-header"><span class="card-icon green">✅</span><span class="card-title">Today's Habits</span><button class="card-action" onclick="navigate('productivity')">View All</button></div>
+          <div id="dash-habits" class="habit-mini-list"><div class="empty-state-sm">No habits yet</div></div>
+        </div>
+        <div class="dash-card glass pomo-card">
+          <div class="dash-card-header"><span class="card-icon red">🍅</span><span class="card-title">Pomodoro</span></div>
+          <div class="pomo-mini">
+            <div class="pomo-mini-time" id="pomo-mini-time">25:00</div>
+            <div class="pomo-mini-btns">
+              <button class="pomo-btn start" id="pomo-mini-btn" onclick="togglePomoMini()"><i data-lucide="play"></i></button>
+              <button class="pomo-btn reset" onclick="resetPomoMini()"><i data-lucide="rotate-ccw"></i></button>
+            </div>
+            <div class="pomo-count">Sessions: <span id="pomo-mini-count">0</span></div>
+          </div>
+        </div>
+        <div class="dash-card glass span-2">
+          <div class="dash-card-header"><span class="card-icon purple">🤖</span><span class="card-title">AI Suggestions</span><button class="card-action" onclick="refreshAISuggestions()">Refresh</button></div>
+          <div id="dash-ai-suggestions" class="ai-suggestions-list">
+            <div class="ai-suggestion-loading"><div class="typing-dots"><span></span><span></span><span></span></div><span>Generating suggestions...</span></div>
+          </div>
+        </div>
+        <div class="dash-card glass">
+          <div class="dash-card-header"><span class="card-icon yellow">📄</span><span class="card-title">Recent Notes</span><button class="card-action" onclick="navigate('notes')">View All</button></div>
+          <div id="dash-notes" class="notes-mini-list"><div class="empty-state-sm">No notes yet</div></div>
+        </div>
+        <div class="dash-card glass">
+          <div class="dash-card-header"><span class="card-icon cyan">🛡️</span><span class="card-title">Cyber Skills</span><button class="card-action" onclick="navigate('cybersec')">View All</button></div>
+          <div id="dash-cyber-skills" class="skill-mini-list"></div>
+        </div>
+        <div class="dash-card glass">
+          <div class="dash-card-header"><span class="card-icon orange">📅</span><span class="card-title">Upcoming Exams</span><button class="card-action" onclick="navigate('semester')">View All</button></div>
+          <div id="dash-exams" class="exam-mini-list"><div class="empty-state-sm">No exams scheduled</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEMESTER TRACKER -->
+    <section id="page-semester" class="page hidden">
+      <div class="page-header">
+        <div><h1>Semester Tracker</h1><p class="page-sub">Manage subjects, marks and attendance</p></div>
+        <button class="btn-primary" onclick="showAddSubjectModal()"><i data-lucide="plus"></i> Add Subject</button>
+      </div>
+      <div class="info-banner glass">
+        <div class="banner-stats">
+          <div class="b-stat"><span id="sem-total-credits">0</span><label>Total Credits</label></div>
+          <div class="b-stat"><span id="sem-avg-internal">0</span><label>Avg Internal</label></div>
+          <div class="b-stat"><span id="sem-avg-attendance">0%</span><label>Avg Attendance</label></div>
+          <div class="b-stat"><span id="sem-predicted-sgpa">—</span><label>Predicted SGPA</label></div>
+        </div>
+      </div>
+      <div id="subjects-list" class="subjects-grid"></div>
+      <div id="subjects-empty" class="empty-state">
+        <div class="empty-icon">📚</div>
+        <h3>No Subjects Added</h3>
+        <p>Add your semester subjects to track marks and attendance</p>
+        <button class="btn-primary" onclick="showAddSubjectModal()">Add First Subject</button>
+      </div>
+    </section>
+
+    <!-- PRODUCTIVITY -->
+    <section id="page-productivity" class="page hidden">
+      <div class="page-header"><h1>Productivity Center</h1><p class="page-sub">Pomodoro · Habits · Focus</p></div>
+      <div class="productivity-grid">
+        <div class="prod-card glass pomo-full">
+          <h3 class="prod-card-title"><i data-lucide="timer"></i> Pomodoro Timer</h3>
+          <div class="pomo-modes">
+            <button class="pomo-mode active" onclick="setPomoMode('work',25)" id="pomo-work">Work 25m</button>
+            <button class="pomo-mode" onclick="setPomoMode('short',5)" id="pomo-short">Short Break 5m</button>
+            <button class="pomo-mode" onclick="setPomoMode('long',15)" id="pomo-long">Long Break 15m</button>
+          </div>
+          <div class="pomo-timer-display">
+            <svg class="pomo-ring" viewBox="0 0 200 200">
+              <circle class="pomo-track" cx="100" cy="100" r="88" />
+              <circle class="pomo-progress" cx="100" cy="100" r="88" id="pomo-circle" />
+            </svg>
+            <div class="pomo-time-center">
+              <div class="pomo-time" id="pomo-time">25:00</div>
+              <div class="pomo-label" id="pomo-label">Focus Time</div>
+            </div>
+          </div>
+          <div class="pomo-controls">
+            <button class="pomo-ctrl-btn" onclick="resetPomo()"><i data-lucide="rotate-ccw"></i></button>
+            <button class="pomo-ctrl-btn primary" onclick="togglePomo()" id="pomo-toggle-btn"><i data-lucide="play" id="pomo-icon"></i></button>
+            <button class="pomo-ctrl-btn" onclick="skipPomo()"><i data-lucide="skip-forward"></i></button>
+          </div>
+          <div class="pomo-session-log">
+            <span>Sessions today: <strong id="pomo-sessions">0</strong></span>
+            <span>Total focus: <strong id="pomo-total-mins">0</strong> min</span>
+          </div>
+        </div>
+        <div class="prod-card glass habits-full">
+          <div class="prod-card-header">
+            <h3 class="prod-card-title"><i data-lucide="check-circle-2"></i> Habit Tracker</h3>
+            <button class="btn-sm" onclick="showAddHabitModal()"><i data-lucide="plus"></i></button>
+          </div>
+          <div id="habits-list" class="habits-container"></div>
+        </div>
+        <div class="prod-card glass study-log">
+          <div class="prod-card-header">
+            <h3 class="prod-card-title"><i data-lucide="clock"></i> Study Log</h3>
+            <button class="btn-sm" onclick="showLogStudyModal()"><i data-lucide="plus"></i> Log</button>
+          </div>
+          <div id="study-sessions" class="study-sessions-list"></div>
+        </div>
+        <div class="prod-card glass focus-stats">
+          <h3 class="prod-card-title"><i data-lucide="zap"></i> This Week</h3>
+          <canvas id="weeklyFocusChart" height="180"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI ASSISTANT -->
+    <section id="page-ai-assistant" class="page hidden">
+      <div class="page-header">
+        <div><h1>AI Study Assistant</h1><p class="page-sub">Powered by OpenRouter · ECE + Cyber + AI Specialist</p></div>
+      </div>
+      <div class="ai-layout">
+        <div class="ai-quick-prompts glass">
+          <h4>Quick Actions</h4>
+          <div class="quick-prompt-grid">
+            <button class="qp-btn" onclick="quickPrompt('summarize')"><i data-lucide="file-text"></i>Summarize Notes</button>
+            <button class="qp-btn" onclick="quickPrompt('explain_ece')"><i data-lucide="cpu"></i>Explain ECE Concept</button>
+            <button class="qp-btn" onclick="quickPrompt('explain_cyber')"><i data-lucide="shield"></i>Explain Cybersecurity</button>
+            <button class="qp-btn" onclick="quickPrompt('quiz')"><i data-lucide="help-circle"></i>Generate Quiz</button>
+            <button class="qp-btn" onclick="quickPrompt('interview')"><i data-lucide="user-check"></i>Interview Questions</button>
+            <button class="qp-btn" onclick="quickPrompt('roadmap')"><i data-lucide="map"></i>Career Roadmap</button>
+            <button class="qp-btn" onclick="quickPrompt('ctf')"><i data-lucide="flag"></i>CTF Hints</button>
+            <button class="qp-btn" onclick="quickPrompt('resume')"><i data-lucide="file-badge"></i>Resume Tips</button>
+          </div>
+          <div class="ai-model-select">
+            <label>AI Model</label>
+            <select id="ai-model-select">
+              <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free)</option>
+              <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Free)</option>
+              <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+            </select>
+          </div>
+        </div>
+        <div class="ai-chat-container glass">
+          <div class="ai-chat-messages" id="ai-chat-messages">
+            <div class="ai-welcome-msg">
+              <div class="ai-avatar">🤖</div>
+              <div class="ai-bubble">
+                <p>Hey! I'm your <strong>CREO AI Assistant</strong> — specialized in ECE, Cybersecurity, and AI topics.</p>
+                <p>I can help you with study notes, cybersecurity concepts, AI/ML topics, interview prep, and career guidance.</p>
+                <p>What would you like to learn today?</p>
+              </div>
+            </div>
+          </div>
+          <div class="ai-chat-input-area">
+            <div class="ai-input-wrapper">
+              <textarea id="ai-input" placeholder="Ask anything about ECE, Cybersecurity, AI..." rows="1" onkeydown="handleAIEnter(event)" oninput="autoResizeTextarea(this)"></textarea>
+              <button class="ai-send-btn" onclick="sendAIMessage()" id="ai-send-btn"><i data-lucide="send"></i></button>
+            </div>
+            <div class="ai-disclaimer">AI responses may contain errors. Always verify critical information.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTES SYSTEM -->
+    <section id="page-notes" class="page hidden">
+      <div class="page-header">
+        <div><h1>Notes System</h1><p class="page-sub">Upload, organize&search your study materials</p></div>
+        <button class="btn-primary" onclick="showUploadNoteModal()"><i data-lucide="upload"></i> Upload Note</button>
+      </div>
+      <div class="notes-search-bar glass">
+        <i data-lucide="search"></i>
+        <input type="text" id="notes-search" placeholder="Search notes by title, subject, or tag..." oninput="searchNotes()" />
+        <select id="notes-filter-type" onchange="searchNotes()">
+          <option value="">All Types</option>
+          <option value="pdf">PDF</option>
+          <option value="image">Image</option>
+          <option value="doc">Document</option>
+          <option value="link">Link</option>
+        </select>
+      </div>
+      <div id="notes-grid" class="notes-grid"></div>
+      <div id="notes-empty" class="empty-state hidden">
+        <div class="empty-icon">📄</div>
+        <h3>No Notes Yet</h3>
+        <p>Upload PDFs, images, or documents to get started</p>
+        <button class="btn-primary" onclick="showUploadNoteModal()">Upload First Note</button>
+      </div>
+    </section>
+
+    <!-- CYBERSECURITY HUB -->
+    <section id="page-cybersec" class="page hidden">
+      <div class="page-header"><h1>Cybersecurity Hub</h1><p class="page-sub">Roadmap · Certs · CTF · Skills</p></div>
+      <div class="cyber-tabs">
+        <button class="cyber-tab active" onclick="switchCyberTab('roadmap')">🗺️ Roadmap</button>
+        <button class="cyber-tab" onclick="switchCyberTab('certs')">🏆 Certifications</button>
+        <button class="cyber-tab" onclick="switchCyberTab('ctf')">🚩 CTF Tracker</button>
+        <button class="cyber-tab" onclick="switchCyberTab('skills')">⚡ Skills</button>
+      </div>
+      <div id="cyber-roadmap" class="cyber-tab-content">
+        <div class="roadmap-container">
+          <div class="roadmap-phase">
+            <div class="phase-header phase-1">Phase 1 — Foundations</div>
+            <div class="roadmap-items">
+              <div class="roadmap-item" data-skill="networking"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Networking Fundamentals</strong><span>TCP/IP, DNS, HTTP, Subnetting, OSI Model</span></div><div class="ri-badge">Essential</div></div>
+              <div class="roadmap-item" data-skill="linux"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Linux Mastery</strong><span>Bash scripting, file permissions, process management</span></div><div class="ri-badge">Essential</div></div>
+              <div class="roadmap-item" data-skill="python"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Python for Security</strong><span>Scripting, automation, socket programming</span></div><div class="ri-badge">Essential</div></div>
+              <div class="roadmap-item" data-skill="crypto_basics"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Cryptography Basics</strong><span>AES, RSA, hashing, PKI, TLS/SSL</span></div><div class="ri-badge">Important</div></div>
+            </div>
+          </div>
+          <div class="roadmap-phase">
+            <div class="phase-header phase-2">Phase 2 — Core Security</div>
+            <div class="roadmap-items">
+              <div class="roadmap-item" data-skill="web_sec"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Web Application Security</strong><span>OWASP Top 10, XSS, SQLi, CSRF, Burp Suite</span></div><div class="ri-badge">Core</div></div>
+              <div class="roadmap-item" data-skill="pentest"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Penetration Testing</strong><span>Recon, exploitation, post-exploitation, reporting</span></div><div class="ri-badge">Core</div></div>
+              <div class="roadmap-item" data-skill="digital_forensics"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Digital Forensics</strong><span>Memory analysis, log analysis, evidence handling</span></div><div class="ri-badge">Core</div></div>
+            </div>
+          </div>
+          <div class="roadmap-phase">
+            <div class="phase-header phase-3">Phase 3 — Specialization</div>
+            <div class="roadmap-items">
+              <div class="roadmap-item" data-skill="malware"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Malware Analysis and RE</strong><span>Static/dynamic analysis, IDA Pro / Ghidra</span></div><div class="ri-badge">Advanced</div></div>
+              <div class="roadmap-item" data-skill="cloud_sec"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>Cloud Security</strong><span>AWS/GCP IAM, misconfigurations, cloud pentesting</span></div><div class="ri-badge">Advanced</div></div>
+              <div class="roadmap-item" data-skill="ai_sec"><div class="ri-check" onclick="toggleRoadmapItem(this)">☐</div><div class="ri-content"><strong>AI Security</strong><span>Adversarial ML, model poisoning, LLM security</span></div><div class="ri-badge">Emerging</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="cyber-certs" class="cyber-tab-content hidden">
+        <div class="certs-header">
+          <div class="cert-path glass">
+            <h4>Recommended Cert Path</h4>
+            <div class="cert-path-flow">
+              <span class="cert-node beginner">CompTIA Security+</span>
+              <i data-lucide="arrow-right"></i>
+              <span class="cert-node intermediate">CEH / eJPT</span>
+              <i data-lucide="arrow-right"></i>
+              <span class="cert-node advanced">OSCP</span>
+              <i data-lucide="arrow-right"></i>
+              <span class="cert-node expert">CISSP / CISM</span>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="showAddCertModal()"><i data-lucide="plus"></i> Track Cert</button>
+        </div>
+        <div id="certs-list" class="certs-grid"></div>
+      </div>
+      <div id="cyber-ctf" class="cyber-tab-content hidden">
+        <div class="ctf-header">
+          <div class="ctf-platforms glass">
+            <h4>Top CTF Platforms</h4>
+            <div class="platform-links">
+              <a href="https://tryhackme.com" target="_blank" class="platform-chip">TryHackMe</a>
+              <a href="https://hackthebox.com" target="_blank" class="platform-chip">HackTheBox</a>
+              <a href="https://picoctf.org" target="_blank" class="platform-chip">PicoCTF</a>
+              <a href="https://ctftime.org" target="_blank" class="platform-chip">CTFTime</a>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="showAddCTFModal()"><i data-lucide="plus"></i> Log CTF</button>
+        </div>
+        <div id="ctf-stats" class="ctf-stats glass">
+          <div class="ctf-stat"><span id="ctf-total">0</span><label>Total Challenges</label></div>
+          <div class="ctf-stat"><span id="ctf-solved">0</span><label>Solved</label></div>
+          <div class="ctf-stat"><span id="ctf-points">0</span><label>Total Points</label></div>
+        </div>
+        <div id="ctf-list" class="ctf-grid"></div>
+      </div>
+      <div id="cyber-skills" class="cyber-tab-content hidden">
+        <div class="skills-container">
+          <div class="skills-radar-wrap glass"><h4>Skills Radar</h4><canvas id="skillsRadarChart" height="250"></canvas></div>
+          <div class="skills-bars glass">
+            <div class="prod-card-header" style="margin-bottom:1rem">
+              <h4>Skill Levels</h4>
+              <button class="btn-sm" onclick="showUpdateSkillModal()"><i data-lucide="edit-2"></i></button>
+            </div>
+            <div id="skills-list" class="skills-list-inner"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLACEMENT HUB -->
+    <section id="page-placement" class="page hidden">
+      <div class="page-header"><h1>Placement Hub</h1><p class="page-sub">Resume · Projects · Internships</p></div>
+      <div class="placement-tabs">
+        <button class="placement-tab active" onclick="switchPlacementTab('resume')">📄 Resume</button>
+        <button class="placement-tab" onclick="switchPlacementTab('projects')">💻 Projects</button>
+        <button class="placement-tab" onclick="switchPlacementTab('internships')">🏢 Internships</button>
+      </div>
+      <div id="placement-resume" class="placement-tab-content">
+        <div class="resume-builder glass">
+          <div class="resume-header-section">
+            <h3>📄 ATS-Optimized Resume Builder</h3>
+            <button class="btn-primary" onclick="generateResumePDF()"><i data-lucide="download"></i> Export</button>
+          </div>
+          <div class="resume-form-grid">
+            <div class="resume-section-block">
+              <h4>Personal Details</h4>
+              <div class="form-group"><label>Full Name</label><input type="text" id="res-name" placeholder="Your Full Name" /></div>
+              <div class="form-group"><label>Email</label><input type="email" id="res-email" placeholder="email@example.com" /></div>
+              <div class="form-group"><label>Phone</label><input type="text" id="res-phone" placeholder="+91 XXXXX XXXXX" /></div>
+              <div class="form-group"><label>LinkedIn</label><input type="text" id="res-linkedin" placeholder="linkedin.com/in/..." /></div>
+              <div class="form-group"><label>GitHub</label><input type="text" id="res-github" placeholder="github.com/..." /></div>
+            </div>
+            <div class="resume-section-block">
+              <h4>Technical Skills</h4>
+              <div class="form-group"><label>Languages</label><input type="text" id="res-languages" placeholder="Python, C++, JavaScript..." /></div>
+              <div class="form-group"><label>Security Tools</label><input type="text" id="res-tools" placeholder="Nmap, Metasploit, Burp Suite..." /></div>
+              <div class="form-group"><label>Frameworks</label><input type="text" id="res-frameworks" placeholder="TensorFlow, PyTorch, React..." /></div>
+              <div class="form-group"><label>Platforms</label><input type="text" id="res-platforms" placeholder="Linux, AWS, Docker, Git..." /></div>
+              <h4 style="margin-top:1rem">Summary</h4>
+              <div class="form-group">
+                <textarea id="res-summary" rows="4" placeholder="Write a 2-3 sentence professional summary..."></textarea>
+                <button class="btn-sm" style="margin-top:0.5rem" onclick="generateAISummary()"><i data-lucide="bot"></i> AI Generate</button>
+              </div>
+            </div>
+          </div>
+          <div class="resume-preview glass" id="resume-preview">
+            <div class="resume-preview-placeholder">
+              <i data-lucide="file-text"></i>
+              <p>Fill in details above to see a preview</p>
+              <button class="btn-primary" onclick="previewResume()">Generate Preview</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="placement-projects" class="placement-tab-content hidden">
+        <div class="tab-action-header"><h3>Project Portfolio</h3><button class="btn-primary" onclick="showAddProjectModal()"><i data-lucide="plus"></i> Add Project</button></div>
+        <div id="projects-grid" class="projects-grid"></div>
+        <div id="projects-empty" class="empty-state hidden"><div class="empty-icon">💻</div><h3>No Projects Yet</h3><p>Add your ECE/Cybersecurity projects</p></div>
+      </div>
+      <div id="placement-internships" class="placement-tab-content hidden">
+        <div class="tab-action-header"><h3>Internship Tracker</h3><button class="btn-primary" onclick="showAddInternshipModal()"><i data-lucide="plus"></i> Add Internship</button></div>
+        <div id="internships-list" class="internships-list"></div>
+        <div id="internships-empty" class="empty-state hidden"><div class="empty-icon">🏢</div><h3>No Internships Tracked</h3></div>
+      </div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section id="page-analytics" class="page hidden">
+      <div class="page-header"><h1>Analytics</h1><p class="page-sub">Track your growth over time</p></div>
+      <div class="analytics-grid">
+        <div class="analytics-card glass span-2"><h4>Weekly Study Hours</h4><canvas id="weeklyStudyChart" height="160"></canvas></div>
+        <div class="analytics-card glass"><h4>Subject Attendance</h4><canvas id="attendanceChart" height="200"></canvas></div>
+        <div class="analytics-card glass"><h4>Monthly Progress</h4><canvas id="monthlyProgressChart" height="200"></canvas></div>
+        <div class="analytics-card glass span-2"><h4>Skill Growth Timeline</h4><canvas id="skillGrowthChart" height="160"></canvas></div>
+        <div class="analytics-card glass"><h4>Habit Completion Rate</h4><canvas id="habitChart" height="200"></canvas></div>
+        <div class="analytics-card glass"><h4>CGPA Trend</h4><canvas id="cgpaTrendChart" height="200"></canvas></div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="page-profile" class="page hidden">
+      <div class="page-header"><h1>Profile</h1><p class="page-sub">Manage your account&preferences</p></div>
+      <div class="profile-grid">
+        <div class="profile-avatar-card glass">
+          <div class="profile-avatar-wrap">
+            <img id="profile-avatar-img" src="#" alt="Avatar" />
+            <button class="avatar-upload-btn" onclick="uploadProfilePhoto()"><i data-lucide="camera"></i></button>
+          </div>
+          <div id="profile-name-display" class="profile-name"></div>
+          <div id="profile-email-display" class="profile-email"></div>
+          <div class="profile-badges"><span class="badge cyber">ECE Student</span><span class="badge ai">Cyber + AI Path</span></div>
+        </div>
+        <div class="profile-form glass">
+          <h3>Edit Profile</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Full Name</label><input type="text" id="profile-name-input" /></div>
+            <div class="form-group"><label>College</label><input type="text" id="profile-college-input" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Branch</label><input type="text" id="profile-branch-input" placeholder="ECE" /></div>
+            <div class="form-group"><label>Semester</label><select id="profile-sem-input"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Current CGPA</label><input type="number" id="profile-cgpa-input" min="0" max="10" step="0.01" /></div>
+            <div class="form-group"><label>Target CGPA</label><input type="number" id="profile-target-cgpa-input" min="0" max="10" step="0.01" /></div>
+          </div>
+          <div class="form-group"><label>Career Goal</label>
+            <select id="profile-goal-input">
+              <option value="cybersec">Cybersecurity Engineer</option>
+              <option value="ai_ml">AI/ML Engineer</option>
+              <option value="cyber_ai">Cybersecurity + AI (Both)</option>
+              <option value="sde">Software Development Engineer</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Bio</label><textarea id="profile-bio-input" rows="3" placeholder="Tell something about yourself..."></textarea></div>
+          <button class="btn-primary" onclick="saveProfile()"><i data-lucide="save"></i> Save Profile</button>
+        </div>
+        <div class="profile-security glass">
+          <h3>Security</h3>
+          <button class="btn-secondary full-width" onclick="changePassword()"><i data-lucide="lock"></i> Change Password</button>
+          <button class="btn-danger full-width" style="margin-top:0.75rem" onclick="confirmDeleteAccount()"><i data-lucide="trash-2"></i> Delete Account</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="bnav-item active" onclick="navigate('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+    <button class="bnav-item" onclick="navigate('semester')" data-page="semester"><i data-lucide="book-open"></i><span>Semester</span></button>
+    <button class="bnav-item ai-fab" onclick="navigate('ai-assistant')" data-page="ai-assistant"><i data-lucide="bot"></i><span>AI</span></button>
+    <button class="bnav-item" onclick="navigate('cybersec')" data-page="cybersec"><i data-lucide="shield"></i><span>Cyber</span></button>
+    <button class="bnav-item" onclick="navigate('analytics')" data-page="analytics"><i data-lucide="bar-chart-2"></i><span>Stats</span></button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal glass" id="modal-container">
+    <div class="modal-header">
+      <h3 id="modal-title">Modal</h3>
+      <button class="modal-close" onclick="closeAllModals()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="firebase.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

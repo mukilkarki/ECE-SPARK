@@ -1,0 +1,20 @@
+{
+  "name": "CREO ECE Career OS",
+  "short_name": "CREO ECE",
+  "description": "Your complete ECE to Cybersecurity + AI career operating system",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0f",
+  "theme_color": "#00f5c4",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "screenshots": []
+}
