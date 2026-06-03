@@ -31,6 +31,10 @@ const OPTIONAL_TRACK_GOALS = new Set(['cybersec', 'ai_ml', 'cyber_ai']);
 let cyberSkills = { ...DEFAULT_CYBER_SKILLS };
 let roadmapProgress = {};
 let aiChatHistory = [];
+let aiChatSessions = [];
+let activeAIChatId = null;
+let aiAbortController = null;
+let aiIsResponding = false;
 
 // ---- Pomodoro State ----
 let pomoTimer = null;
@@ -89,6 +93,7 @@ async function loadApp() {
   updateOptionalTrackUI();
   navigate('dashboard');
   lucide.createIcons();
+  initAIChatHistory();
   refreshAISuggestions();
 }
 
@@ -184,6 +189,9 @@ window.logoutUser = async function() {
   internships = []; projects = []; ctfChallenges = [];
   studySessions = []; roadmapProgress = {}; cyberSkills = { ...DEFAULT_CYBER_SKILLS };
   aiChatHistory = [];
+  aiChatSessions = [];
+  activeAIChatId = null;
+  resetAIResponseState();
   clearAllCharts();
   showToast('Signed out successfully', 'info');
 };
@@ -243,7 +251,7 @@ window.navigate = function(page) {
     'placement': () => { switchPlacementTab('resume'); loadProjects(); loadInternships(); },
     'analytics': loadAnalytics,
     'profile': loadProfile,
-    'ai-assistant': () => lucide.createIcons()
+    'ai-assistant': () => { initAIChatHistory(); renderAIChat(); renderAIHistoryList(); lucide.createIcons(); }
   };
   if (loaders[page]) loaders[page]();
 };
@@ -1063,20 +1071,215 @@ window.quickPrompt = function(type) {
   }
 };
 
+function getAIHistoryStorageKey() {
+  const userId = currentUser?.uid || 'guest';
+  return `creo-ai-chat-history-${userId}`;
+}
+
+function initAIChatHistory() {
+  if (aiChatSessions.length && activeAIChatId) return;
+  try {
+    const raw = localStorage.getItem(getAIHistoryStorageKey());
+    aiChatSessions = raw ? JSON.parse(raw) : [];
+  } catch(e) {
+    aiChatSessions = [];
+  }
+  aiChatSessions = Array.isArray(aiChatSessions) ? aiChatSessions.filter(chat => Array.isArray(chat.messages)) : [];
+  if (!aiChatSessions.length) createAIChatSession(false);
+  activeAIChatId = activeAIChatId || aiChatSessions[0]?.id;
+  syncActiveAIHistory();
+  renderAIHistoryList();
+}
+
+function createAIChatSession(save = true) {
+  const now = new Date().toISOString();
+  const chat = {
+    id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: 'New Chat',
+    createdAt: now,
+    updatedAt: now,
+    messages: []
+  };
+  aiChatSessions.unshift(chat);
+  activeAIChatId = chat.id;
+  aiChatHistory = [];
+  if (save) saveAIChatHistory();
+  return chat;
+}
+
+function getActiveAIChat() {
+  initAIChatHistory();
+  return aiChatSessions.find(chat => chat.id === activeAIChatId) || createAIChatSession();
+}
+
+function syncActiveAIHistory() {
+  const chat = aiChatSessions.find(item => item.id === activeAIChatId);
+  aiChatHistory = chat ? chat.messages.map(({ role, content }) => ({ role, content })) : [];
+}
+
+function saveAIChatHistory() {
+  try {
+    localStorage.setItem(getAIHistoryStorageKey(), JSON.stringify(aiChatSessions));
+  } catch(e) {
+    console.warn('Unable to save AI chat history.', e);
+  }
+  renderAIHistoryList();
+}
+
+function getAIChatTitle(content) {
+  const cleaned = (content || '').replace(/\s+/g, ' ').trim();
+  return cleaned ? cleaned.slice(0, 48) + (cleaned.length > 48 ? '…' : '') : 'New Chat';
+}
+
+function getAIWelcomeMarkup() {
+  return `
+    <div class="ai-welcome-msg">
+      <div class="ai-avatar">🤖</div>
+      <div class="ai-bubble">
+        <p>Hey! I'm your <strong>CREO AI Assistant</strong> — focused on ECE subjects, labs, projects, and placements. Cybersecurity and AI Engineering are optional tracks when you need them.</p>
+        <p>I can help you with study notes, cybersecurity concepts, AI/ML topics, interview prep, and career guidance.</p>
+        <p>What would you like to learn today?</p>
+      </div>
+    </div>`;
+}
+
+function renderAIChat() {
+  const container = document.getElementById('ai-chat-messages');
+  if (!container) return;
+  const chat = getActiveAIChat();
+  container.innerHTML = getAIWelcomeMarkup();
+  chat.messages.forEach(message => appendChatMessage(message.role, message.content, message.id, false));
+  container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
+}
+
+function renderAIHistoryList() {
+  const list = document.getElementById('ai-history-list');
+  if (!list) return;
+  if (!aiChatSessions.length) {
+    list.innerHTML = '<div class="ai-history-empty">No saved chats yet.</div>';
+    return;
+  }
+  list.innerHTML = aiChatSessions.map(chat => {
+    const date = new Date(chat.updatedAt || chat.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const messageCount = chat.messages?.length || 0;
+    return `
+      <div class="ai-history-item ${chat.id === activeAIChatId ? 'active' : ''}">
+        <button class="ai-history-open" onclick="openAIChat('${chat.id}')">
+          <span>${escapeHtml(chat.title || 'New Chat')}</span>
+          <small>${messageCount} messages · ${date}</small>
+        </button>
+        <button class="history-delete-btn" onclick="deleteAIChat('${chat.id}')" title="Delete chat"><i data-lucide="trash-2"></i></button>
+      </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+window.openAIChat = function(chatId) {
+  if (aiIsResponding) stopAIResponse();
+  activeAIChatId = chatId;
+  syncActiveAIHistory();
+  renderAIChat();
+  renderAIHistoryList();
+};
+
+window.startNewAIChat = function() {
+  if (aiIsResponding) stopAIResponse();
+  createAIChatSession();
+  renderAIChat();
+  showToast('New AI chat started.', 'success');
+};
+
+window.deleteAIChat = function(chatId) {
+  if (aiIsResponding && chatId === activeAIChatId) stopAIResponse();
+  aiChatSessions = aiChatSessions.filter(chat => chat.id !== chatId);
+  if (!aiChatSessions.length) createAIChatSession(false);
+  if (activeAIChatId === chatId) activeAIChatId = aiChatSessions[0].id;
+  syncActiveAIHistory();
+  saveAIChatHistory();
+  renderAIChat();
+  showToast('Chat deleted.', 'success');
+};
+
+window.clearAllAIChats = function() {
+  if (aiIsResponding) stopAIResponse();
+  aiChatSessions = [];
+  createAIChatSession(false);
+  saveAIChatHistory();
+  renderAIChat();
+  showToast('AI chat history deleted.', 'success');
+};
+
+window.editAIMessage = function(messageId) {
+  if (aiIsResponding) stopAIResponse();
+  const chat = getActiveAIChat();
+  const index = chat.messages.findIndex(message => message.id === messageId && message.role === 'user');
+  if (index === -1) return;
+  const input = document.getElementById('ai-input');
+  input.value = chat.messages[index].content;
+  autoResizeTextarea(input);
+  chat.messages = chat.messages.slice(0, index);
+  chat.updatedAt = new Date().toISOString();
+  syncActiveAIHistory();
+  saveAIChatHistory();
+  renderAIChat();
+  input.focus();
+  showToast('Message ready to edit. Send it again when finished.', 'info');
+};
+
+window.stopAIResponse = function() {
+  if (aiAbortController) aiAbortController.abort();
+  resetAIResponseState();
+  document.querySelectorAll('.ai-msg-loading').forEach(el => el.remove());
+  showToast('AI response stopped.', 'info');
+};
+
+function resetAIResponseState() {
+  aiIsResponding = false;
+  aiAbortController = null;
+  const sendBtn = document.getElementById('ai-send-btn');
+  if (sendBtn) {
+    sendBtn.disabled = false;
+    sendBtn.classList.remove('responding');
+    sendBtn.innerHTML = '<i data-lucide="send"></i>';
+    sendBtn.title = 'Send message';
+  }
+  lucide.createIcons();
+}
+
+function setAIResponseState() {
+  aiIsResponding = true;
+  const sendBtn = document.getElementById('ai-send-btn');
+  if (sendBtn) {
+    sendBtn.disabled = false;
+    sendBtn.classList.add('responding');
+    sendBtn.innerHTML = '<i data-lucide="square"></i>';
+    sendBtn.title = 'Stop response';
+  }
+  lucide.createIcons();
+}
+
 window.sendAIMessage = async function() {
+  if (aiIsResponding) { stopAIResponse(); return; }
   const input = document.getElementById('ai-input');
   const msg = input.value.trim();
   if (!msg) return;
 
-  const sendBtn = document.getElementById('ai-send-btn');
-  sendBtn.disabled = true;
+  const chat = getActiveAIChat();
   input.value = '';
   autoResizeTextarea(input);
+  setAIResponseState();
 
-  appendChatMessage('user', msg);
+  const userMessage = { id: `msg-${Date.now()}-user`, role: 'user', content: msg, createdAt: new Date().toISOString() };
+  chat.messages.push(userMessage);
+  if (chat.messages.length === 1 || !chat.title || chat.title === 'New Chat') chat.title = getAIChatTitle(msg);
+  chat.updatedAt = new Date().toISOString();
+  syncActiveAIHistory();
+  saveAIChatHistory();
+  appendChatMessage('user', msg, userMessage.id);
   const loadingId = appendChatLoading();
 
-  aiChatHistory.push({ role: 'user', content: msg });
+  aiAbortController = new AbortController();
 
   try {
     const model = document.getElementById('ai-model-select').value;
@@ -1096,29 +1299,45 @@ Format responses clearly with:
 - Include practical examples when explaining concepts
 - Keep responses concise but comprehensive`;
 
-    const response = await callOpenRouterWithHistory(systemPrompt, aiChatHistory, model);
+    const response = await callOpenRouterWithHistory(systemPrompt, aiChatHistory, model, 1000, aiAbortController.signal);
     removeChatLoading(loadingId);
-    appendChatMessage('assistant', response);
-    aiChatHistory.push({ role: 'assistant', content: response });
-
-    if (aiChatHistory.length > 20) aiChatHistory = aiChatHistory.slice(-20);
+    const assistantMessage = { id: `msg-${Date.now()}-assistant`, role: 'assistant', content: response, createdAt: new Date().toISOString() };
+    chat.messages.push(assistantMessage);
+    chat.updatedAt = new Date().toISOString();
+    appendChatMessage('assistant', response, assistantMessage.id);
+    if (chat.messages.length > 40) chat.messages = chat.messages.slice(-40);
+    syncActiveAIHistory();
+    saveAIChatHistory();
   } catch(e) {
     removeChatLoading(loadingId);
-    appendChatMessage('assistant', '⚠️ Sorry, I encountered an error. Please check your OpenRouter API key in firebase.js. Make sure OPENROUTER_API_KEY is set correctly.');
+    if (e.name !== 'AbortError') {
+      const errorMessage = '⚠️ Sorry, I encountered an error. Please check your OpenRouter API key in firebase.js. Make sure OPENROUTER_API_KEY is set correctly.';
+      const assistantMessage = { id: `msg-${Date.now()}-assistant`, role: 'assistant', content: errorMessage, createdAt: new Date().toISOString() };
+      chat.messages.push(assistantMessage);
+      appendChatMessage('assistant', errorMessage, assistantMessage.id);
+      syncActiveAIHistory();
+      saveAIChatHistory();
+    }
   }
-  sendBtn.disabled = false;
+  resetAIResponseState();
 };
 
-function appendChatMessage(role, content) {
+function appendChatMessage(role, content, messageId = '', shouldScroll = true) {
   const container = document.getElementById('ai-chat-messages');
+  if (!container) return;
   const div = document.createElement('div');
   div.className = `ai-msg ${role}`;
+  if (messageId) div.dataset.messageId = messageId;
   const formatted = formatMarkdown(content);
+  const actions = role === 'user' && messageId
+    ? `<div class="ai-message-actions"><button onclick="editAIMessage('${messageId}')"><i data-lucide="pencil"></i> Edit</button></div>`
+    : '';
   div.innerHTML = role === 'user'
-    ? `<div class="ai-bubble">${formatted}</div><div class="ai-avatar">👤</div>`
+    ? `<div class="ai-message-content"><div class="ai-bubble">${formatted}</div>${actions}</div><div class="ai-avatar">👤</div>`
     : `<div class="ai-avatar">🤖</div><div class="ai-bubble">${formatted}</div>`;
   container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+  if (shouldScroll) container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
 }
 
 function appendChatLoading() {
@@ -1127,7 +1346,7 @@ function appendChatLoading() {
   const div = document.createElement('div');
   div.className = 'ai-msg ai-msg-loading';
   div.id = id;
-  div.innerHTML = `<div class="ai-avatar">🤖</div><div class="ai-bubble"><div class="typing-dots"><span></span><span></span><span></span></div><span>Thinking...</span></div>`;
+  div.innerHTML = `<div class="ai-avatar">🤖</div><div class="ai-bubble"><div class="typing-dots"><span></span><span></span><span></span></div><span>Thinking... Tap stop to cancel.</span></div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
   return id;
@@ -1137,8 +1356,17 @@ function removeChatLoading(id) {
   document.getElementById(id)?.remove();
 }
 
+function escapeHtml(text = '') {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function formatMarkdown(text) {
-  return text
+  return escapeHtml(text)
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -2073,13 +2301,14 @@ async function callOpenRouter(prompt, maxTokens = 1000) {
   return data.choices?.[0]?.message?.content || '';
 }
 
-async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens = 1000) {
+async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens = 1000, signal) {
   if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
     const latestMessage = [...history].reverse().find(m => m.role === 'user')?.content || '';
     const res = await fetch(AI_API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: latestMessage, systemPrompt, history, model, maxTokens })
+      body: JSON.stringify({ message: latestMessage, systemPrompt, history, model, maxTokens }),
+      signal
     });
     if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
     const data = await res.json().catch(() => null);
@@ -2097,7 +2326,8 @@ async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens
       'HTTP-Referer': window.location.href,
       'X-Title': 'CREO ECE Career OS'
     },
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages })
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages }),
+    signal
   });
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
