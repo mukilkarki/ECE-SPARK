@@ -20,7 +20,7 @@ const FIREBASE_CONFIG = {
 // AI_API_ENDPOINT points to the deployed proxy used by app.js.
 // OPENROUTER_API_KEY is optional when the proxy is available.
 const AI_API_ENDPOINT = "https://ecespark.mukilkarkimail.workers.dev";
-const OPENROUTER_API_KEY = "";
+const OPENROUTER_API_KEY = "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";
 
 // ---- Cloudinary Config ----
 // Sign up at https://cloudinary.com (free 25GB)
