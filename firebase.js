@@ -6,7 +6,7 @@
 // ---- Firebase Config ----
 // Get from: Firebase Console → Project Settings → Your Apps → Web App
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAdUnNzLWp1h11KUPFDD0LciA-tBW5ez0Q",
   authDomain: "ece-void-os.firebaseapp.com",
   projectId: "ece-void-os",
@@ -16,21 +16,11 @@ const firebaseConfig = {
   measurementId: "G-RHGCLXYEZ7"
 };
 
-// ---- OpenRouter----
-// Get free key from: https://openrouter.ai/keys
-// Free models: google/gemini-2.0-flash-exp:free, meta-llama/llama-3.1-8b-instruct:free
-const AI_API_ENDPOINT =
-"https://ecespark.mukilkarkimail.workers.dev";
-
-const response = await fetch(AI_API_ENDPOINT,{
-  method:"POST",
-  headers:{
-    "Content-Type":"application/json"
-  },
-  body:JSON.stringify({
-    message:"Hello"
-  })
-});
+// ---- AI Proxy / OpenRouter Config ----
+// AI_API_ENDPOINT points to the deployed proxy used by app.js.
+// OPENROUTER_API_KEY is optional when the proxy is available.
+const AI_API_ENDPOINT = "https://ecespark.mukilkarkimail.workers.dev";
+const OPENROUTER_API_KEY = "";
 
 // ---- Cloudinary Config ----
 // Sign up at https://cloudinary.com (free 25GB)
