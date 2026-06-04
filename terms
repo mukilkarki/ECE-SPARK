@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECE SPARK - PRIVACY POLICY</title>
+<style>
+:root{
+    --bg:#0a0a0f;
+    --bg2:#12121c;
+    --card:rgba(255,255,255,0.05);
+    --border:rgba(255,255,255,0.08);
+    --text:#f5f5ff;
+    --text2:#a0a0c0;
+    --cyan:#00f5c4;
+    --cyan-glow:rgba(0,245,196,.35);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:linear-gradient(135deg,#0a0a0f,#111122);
+    color:var(--text);
+    font-family:Inter,Arial,sans-serif;
+    line-height:1.7;
+    padding:30px 15px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    background:var(--card);
+    border:1px solid var(--border);
+    backdrop-filter:blur(20px);
+    border-radius:24px;
+    padding:35px;
+    box-shadow:
+        0 10px 40px rgba(0,0,0,.4),
+        0 0 30px var(--cyan-glow);
+}
+
+.logo{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.logo h1{
+    font-size:2rem;
+    font-weight:800;
+}
+
+.logo span{
+    color:var(--cyan);
+}
+
+.updated{
+    text-align:center;
+    color:var(--text2);
+    margin-bottom:25px;
+}
+
+h2{
+    color:var(--cyan);
+    margin-top:25px;
+    margin-bottom:10px;
+    font-size:1.2rem;
+}
+
+p{
+    color:var(--text2);
+    margin-bottom:12px;
+}
+
+ul{
+    margin-left:20px;
+    color:var(--text2);
+}
+
+li{
+    margin-bottom:8px;
+}
+
+.footer{
+    margin-top:40px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+    text-align:center;
+    color:var(--text2);
+}
+
+.footer strong{
+    color:var(--cyan);
+}
+
+.back-btn{
+    display:inline-block;
+    margin-top:25px;
+    padding:12px 20px;
+    border-radius:12px;
+    background:linear-gradient(
+        135deg,
+        var(--cyan),
+        #00cfa6
+    );
+    color:#000;
+    font-weight:700;
+    text-decoration:none;
+    box-shadow:0 0 20px var(--cyan-glow);
+}
+
+.back-btn:hover{
+    transform:translateY(-2px);
+}
+
+@media(max-width:768px){
+    .container{
+        padding:22px;
+    }
+
+    .logo h1{
+        font-size:1.6rem;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="logo">
+    <h1>⚡ ECE <span>SPARK</span></h1>
+</div>
+
+<p class="updated">
+Last Updated: June 2026
+</p>
+
+<!-- All your Privacy Policy or Terms content here -->
+
+<h1>Terms of Service</h1>
+
+<p>Last Updated: June 2026</p>
+
+<h2>1. Acceptance</h2>
+<p>
+By using ECE-SPARK, you agree to these Terms of Service.
+</p>
+
+<h2>2. Purpose</h2>
+<p>
+ECE-SPARK is an educational and career development platform designed primarily for Electronics and Communication Engineering students.
+</p>
+
+<h2>3. User Responsibilities</h2>
+<ul>
+<li>Provide accurate information</li>
+<li>Maintain account security</li>
+<li>Use the platform lawfully</li>
+<li>Respect other users</li>
+</ul>
+
+<h2>4. Intellectual Property</h2>
+<p>
+All ECE-SPARK content, branding, source code, designs, logos, and platform assets are the property of Creovisia unless otherwise stated.
+</p>
+
+<h2>5. Prohibited Activities</h2>
+<ul>
+<li>Unauthorized copying</li>
+<li>Reverse engineering</li>
+<li>Distributing platform source code</li>
+<li>Using the platform for illegal purposes</li>
+</ul>
+
+<h2>6. Service Availability</h2>
+<p>
+Services may be modified, suspended, or discontinued at any time without notice.
+</p>
+
+<h2>7. Disclaimer</h2>
+<p>
+Educational recommendations, AI-generated content, and career guidance are provided for informational purposes only and should be independently verified.
+</p>
+
+<h2>8. Limitation of Liability</h2>
+<p>
+Creovisia and the developer shall not be liable for indirect, incidental, or consequential damages arising from platform usage.
+</p>
+
+<h2>9. Termination</h2>
+<p>
+Accounts violating these terms may be suspended or removed.
+</p>
+
+<h2>10. Contact</h2>
+<p>
+Publisher: Creovisia<br>
+Developer: Mukil Karki M
+</p>
+
+<div class="footer">
+    <p>
+        Published by <strong>Creovisia</strong>
+    </p>
+    <p>
+        Developed by <strong>Mukil Karki M</strong>
+    </p>
+    <p>
+        © 2026 Creovisia. All Rights Reserved.
+    </p>
+
+    <a href="index.html" class="back-btn">
+        ← Back to ECE-SPARK
+    </a>
+</div>
+
+</div>
+
+</body>
+</html>
