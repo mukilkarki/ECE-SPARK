@@ -296,30 +296,57 @@
         <div><h1>AI Study Assistant</h1><p class="page-sub">ECE-first study help · Optional Cyber/AI guidance</p></div>
       </div>
       <div class="ai-layout">
-        <div class="ai-quick-prompts glass">
-          <h4>Quick Actions</h4>
-          <div class="quick-prompt-grid">
-            <button class="qp-btn" onclick="quickPrompt('summarize')"><i data-lucide="file-text"></i>Summarize Notes</button>
-            <button class="qp-btn" onclick="quickPrompt('explain_ece')"><i data-lucide="cpu"></i>Explain ECE Concept</button>
-            <button class="qp-btn" onclick="quickPrompt('explain_cyber')"><i data-lucide="shield"></i>Optional Cyber/AI</button>
-            <button class="qp-btn" onclick="quickPrompt('quiz')"><i data-lucide="help-circle"></i>Generate Quiz</button>
-            <button class="qp-btn" onclick="quickPrompt('interview')"><i data-lucide="user-check"></i>Interview Questions</button>
-            <button class="qp-btn" onclick="quickPrompt('roadmap')"><i data-lucide="map"></i>Career Roadmap</button>
-            <button class="qp-btn" onclick="quickPrompt('ctf')"><i data-lucide="flag"></i>CTF Hints</button>
-            <button class="qp-btn" onclick="quickPrompt('resume')"><i data-lucide="file-badge"></i>Resume Tips</button>
+        <div class="ai-chat-container glass" id="ai-chat-container">
+          <div class="ai-chat-topbar">
+            <div>
+              <h3>CREO AI Chat</h3>
+              <span>Ask, review history, and switch models from the menu.</span>
+            </div>
+            <button class="ai-menu-toggle" onclick="toggleAIChatMenu()" title="Open AI tools menu"><i data-lucide="panel-left-open"></i><span>Menu</span></button>
           </div>
-          <div class="ai-model-select">
-            <label>AI Model</label>
-            <select id="ai-model-select">
-              <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free)</option>
-              <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Free)</option>
-              <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
-              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-              <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
-            </select>
-          </div>
-        </div>
-        <div class="ai-chat-container glass">
+          <div class="ai-chat-menu-backdrop" onclick="closeAIChatMenu()"></div>
+          <aside class="ai-chat-menu" id="ai-chat-menu" aria-label="AI chat tools menu">
+            <div class="ai-menu-header">
+              <div>
+                <h3>AI Tools</h3>
+                <p>Quick actions, model, and history</p>
+              </div>
+              <button class="ai-menu-close" onclick="closeAIChatMenu()" title="Close AI menu"><i data-lucide="x"></i></button>
+            </div>
+            <div class="ai-menu-section">
+              <h4>Quick Actions</h4>
+              <div class="quick-prompt-grid">
+                <button class="qp-btn" onclick="quickPrompt('summarize')"><i data-lucide="file-text"></i>Summarize Notes</button>
+                <button class="qp-btn" onclick="quickPrompt('explain_ece')"><i data-lucide="cpu"></i>Explain ECE Concept</button>
+                <button class="qp-btn" onclick="quickPrompt('explain_cyber')"><i data-lucide="shield"></i>Optional Cyber/AI</button>
+                <button class="qp-btn" onclick="quickPrompt('quiz')"><i data-lucide="help-circle"></i>Generate Quiz</button>
+                <button class="qp-btn" onclick="quickPrompt('interview')"><i data-lucide="user-check"></i>Interview Questions</button>
+                <button class="qp-btn" onclick="quickPrompt('roadmap')"><i data-lucide="map"></i>Career Roadmap</button>
+                <button class="qp-btn" onclick="quickPrompt('ctf')"><i data-lucide="flag"></i>CTF Hints</button>
+                <button class="qp-btn" onclick="quickPrompt('resume')"><i data-lucide="file-badge"></i>Resume Tips</button>
+              </div>
+            </div>
+            <div class="ai-menu-section ai-model-select">
+              <label>AI Model</label>
+              <select id="ai-model-select">
+                <option value="openrouter/owl-alpha">Owl Alpha (Free)</option>
+                <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">Nemotron 3 Nano (Free)</option>
+                <option value="qwen/qwen3-coder:free">Qwen3 Coder 480B (Free)</option>
+                <option value="nousresearch/hermes-3-llama-3.1-405b:free">Hermes 3 405B (Free)</option>
+                <option value="google/gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                <option value="google/gemini-3.5-flash">Gemini 3.5 Flash</option>
+                <option value="openai/gpt-chat-latest">GPT Chat Latest</option>
+              </select>
+            </div>
+            <div class="ai-menu-section ai-history-panel">
+              <div class="ai-history-header">
+                <h4>Chat History</h4>
+                <button class="history-action-btn" onclick="startNewAIChat()" title="Start new chat"><i data-lucide="plus"></i></button>
+              </div>
+              <div id="ai-history-list" class="ai-history-list"></div>
+              <button class="ai-clear-history-btn" onclick="clearAllAIChats()"><i data-lucide="trash-2"></i> Delete All History</button>
+            </div>
+          </aside>
           <div class="ai-chat-messages" id="ai-chat-messages">
             <div class="ai-welcome-msg">
               <div class="ai-avatar">🤖</div>
@@ -333,7 +360,7 @@
           <div class="ai-chat-input-area">
             <div class="ai-input-wrapper">
               <textarea id="ai-input" placeholder="Ask about ECE subjects, labs, projects, exams, placements, or optional Cyber/AI..." rows="1" onkeydown="handleAIEnter(event)" oninput="autoResizeTextarea(this)"></textarea>
-              <button class="ai-send-btn" onclick="sendAIMessage()" id="ai-send-btn"><i data-lucide="send"></i></button>
+              <button class="ai-send-btn" onclick="sendAIMessage()" id="ai-send-btn" title="Send message"><i data-lucide="send"></i></button>
             </div>
             <div class="ai-disclaimer">AI responses may contain errors. Always verify critical information.</div>
           </div>

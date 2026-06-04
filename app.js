@@ -31,6 +31,10 @@ const OPTIONAL_TRACK_GOALS = new Set(['cybersec', 'ai_ml', 'cyber_ai']);
 let cyberSkills = { ...DEFAULT_CYBER_SKILLS };
 let roadmapProgress = {};
 let aiChatHistory = [];
+let aiChatSessions = [];
+let activeAIChatId = null;
+let aiAbortController = null;
+let aiIsResponding = false;
 
 // ---- Pomodoro State ----
 let pomoTimer = null;
@@ -89,6 +93,7 @@ async function loadApp() {
   updateOptionalTrackUI();
   navigate('dashboard');
   lucide.createIcons();
+  initAIChatHistory();
   refreshAISuggestions();
 }
 
@@ -184,6 +189,9 @@ window.logoutUser = async function() {
   internships = []; projects = []; ctfChallenges = [];
   studySessions = []; roadmapProgress = {}; cyberSkills = { ...DEFAULT_CYBER_SKILLS };
   aiChatHistory = [];
+  aiChatSessions = [];
+  activeAIChatId = null;
+  resetAIResponseState();
   clearAllCharts();
   showToast('Signed out successfully', 'info');
 };
@@ -243,7 +251,7 @@ window.navigate = function(page) {
     'placement': () => { switchPlacementTab('resume'); loadProjects(); loadInternships(); },
     'analytics': loadAnalytics,
     'profile': loadProfile,
-    'ai-assistant': () => lucide.createIcons()
+    'ai-assistant': () => { initAIChatHistory(); renderAIChat(); renderAIHistoryList(); lucide.createIcons(); }
   };
   if (loaders[page]) loaders[page]();
 };
@@ -1043,6 +1051,16 @@ function renderWeeklyFocusChart() {
 // ============================================================
 // AI ASSISTANT
 // ============================================================
+
+window.toggleAIChatMenu = function() {
+  const container = document.getElementById('ai-chat-container');
+  container?.classList.toggle('menu-open');
+};
+
+window.closeAIChatMenu = function() {
+  document.getElementById('ai-chat-container')?.classList.remove('menu-open');
+};
+
 const QUICK_PROMPTS = {
   summarize: 'I need help summarizing my ECE study notes. Explain how to summarize topics like Digital Signal Processing, VLSI Design, Communication Systems, Embedded Systems, and Control Systems. Give a structured summary format.',
   explain_ece: 'Can you explain a fundamental ECE concept in detail? Choose one of: Phase-Locked Loop (PLL), MOSFET operation, Fourier Transform applications, Op-Amp circuits, or antenna basics. Make it clear with examples.',
@@ -1058,25 +1076,223 @@ window.quickPrompt = function(type) {
   const prompt = QUICK_PROMPTS[type];
   if (prompt) {
     document.getElementById('ai-input').value = prompt;
+    closeAIChatMenu();
     navigate('ai-assistant');
     setTimeout(() => sendAIMessage(), 100);
   }
 };
 
+function getAIHistoryStorageKey() {
+  const userId = currentUser?.uid || 'guest';
+  return `creo-ai-chat-history-${userId}`;
+}
+
+function initAIChatHistory() {
+  if (aiChatSessions.length && activeAIChatId) return;
+  try {
+    const raw = localStorage.getItem(getAIHistoryStorageKey());
+    aiChatSessions = raw ? JSON.parse(raw) : [];
+  } catch(e) {
+    aiChatSessions = [];
+  }
+  aiChatSessions = Array.isArray(aiChatSessions) ? aiChatSessions.filter(chat => Array.isArray(chat.messages)) : [];
+  if (!aiChatSessions.length) createAIChatSession(false);
+  activeAIChatId = activeAIChatId || aiChatSessions[0]?.id;
+  syncActiveAIHistory();
+  renderAIHistoryList();
+}
+
+function createAIChatSession(save = true) {
+  const now = new Date().toISOString();
+  const chat = {
+    id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: 'New Chat',
+    createdAt: now,
+    updatedAt: now,
+    messages: []
+  };
+  aiChatSessions.unshift(chat);
+  activeAIChatId = chat.id;
+  aiChatHistory = [];
+  if (save) saveAIChatHistory();
+  return chat;
+}
+
+function getActiveAIChat() {
+  initAIChatHistory();
+  return aiChatSessions.find(chat => chat.id === activeAIChatId) || createAIChatSession();
+}
+
+function syncActiveAIHistory() {
+  const chat = aiChatSessions.find(item => item.id === activeAIChatId);
+  aiChatHistory = chat ? chat.messages.map(({ role, content }) => ({ role, content })) : [];
+}
+
+function saveAIChatHistory() {
+  try {
+    localStorage.setItem(getAIHistoryStorageKey(), JSON.stringify(aiChatSessions));
+  } catch(e) {
+    console.warn('Unable to save AI chat history.', e);
+  }
+  renderAIHistoryList();
+}
+
+function getAIChatTitle(content) {
+  const cleaned = (content || '').replace(/\s+/g, ' ').trim();
+  return cleaned ? cleaned.slice(0, 48) + (cleaned.length > 48 ? '…' : '') : 'New Chat';
+}
+
+function getAIWelcomeMarkup() {
+  return `
+    <div class="ai-welcome-msg">
+      <div class="ai-avatar">🤖</div>
+      <div class="ai-bubble">
+        <p>Hey! I'm your <strong>CREO AI Assistant</strong> — focused on ECE subjects, labs, projects, and placements. Cybersecurity and AI Engineering are optional tracks when you need them.</p>
+        <p>I can help you with study notes, cybersecurity concepts, AI/ML topics, interview prep, and career guidance.</p>
+        <p>What would you like to learn today?</p>
+      </div>
+    </div>`;
+}
+
+function renderAIChat() {
+  const container = document.getElementById('ai-chat-messages');
+  if (!container) return;
+  const chat = getActiveAIChat();
+  container.innerHTML = getAIWelcomeMarkup();
+  chat.messages.forEach(message => appendChatMessage(message.role, message.content, message.id, false));
+  container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
+}
+
+function renderAIHistoryList() {
+  const list = document.getElementById('ai-history-list');
+  if (!list) return;
+  if (!aiChatSessions.length) {
+    list.innerHTML = '<div class="ai-history-empty">No saved chats yet.</div>';
+    return;
+  }
+  list.innerHTML = aiChatSessions.map(chat => {
+    const date = new Date(chat.updatedAt || chat.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const messageCount = chat.messages?.length || 0;
+    return `
+      <div class="ai-history-item ${chat.id === activeAIChatId ? 'active' : ''}">
+        <button class="ai-history-open" onclick="openAIChat('${chat.id}')">
+          <span>${escapeHtml(chat.title || 'New Chat')}</span>
+          <small>${messageCount} messages · ${date}</small>
+        </button>
+        <button class="history-delete-btn" onclick="deleteAIChat('${chat.id}')" title="Delete chat"><i data-lucide="trash-2"></i></button>
+      </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+window.openAIChat = function(chatId) {
+  if (aiIsResponding) stopAIResponse();
+  activeAIChatId = chatId;
+  syncActiveAIHistory();
+  renderAIChat();
+  renderAIHistoryList();
+  closeAIChatMenu();
+};
+
+window.startNewAIChat = function() {
+  if (aiIsResponding) stopAIResponse();
+  createAIChatSession();
+  renderAIChat();
+  closeAIChatMenu();
+  showToast('New AI chat started.', 'success');
+};
+
+window.deleteAIChat = function(chatId) {
+  if (aiIsResponding && chatId === activeAIChatId) stopAIResponse();
+  aiChatSessions = aiChatSessions.filter(chat => chat.id !== chatId);
+  if (!aiChatSessions.length) createAIChatSession(false);
+  if (activeAIChatId === chatId) activeAIChatId = aiChatSessions[0].id;
+  syncActiveAIHistory();
+  saveAIChatHistory();
+  renderAIChat();
+  showToast('Chat deleted.', 'success');
+};
+
+window.clearAllAIChats = function() {
+  if (aiIsResponding) stopAIResponse();
+  aiChatSessions = [];
+  createAIChatSession(false);
+  saveAIChatHistory();
+  renderAIChat();
+  showToast('AI chat history deleted.', 'success');
+};
+
+window.editAIMessage = function(messageId) {
+  if (aiIsResponding) stopAIResponse();
+  const chat = getActiveAIChat();
+  const index = chat.messages.findIndex(message => message.id === messageId && message.role === 'user');
+  if (index === -1) return;
+  const input = document.getElementById('ai-input');
+  input.value = chat.messages[index].content;
+  autoResizeTextarea(input);
+  chat.messages = chat.messages.slice(0, index);
+  chat.updatedAt = new Date().toISOString();
+  syncActiveAIHistory();
+  saveAIChatHistory();
+  renderAIChat();
+  input.focus();
+  showToast('Message ready to edit. Send it again when finished.', 'info');
+};
+
+window.stopAIResponse = function() {
+  if (aiAbortController) aiAbortController.abort();
+  resetAIResponseState();
+  document.querySelectorAll('.ai-msg-loading').forEach(el => el.remove());
+  showToast('AI response stopped.', 'info');
+};
+
+function resetAIResponseState() {
+  aiIsResponding = false;
+  aiAbortController = null;
+  const sendBtn = document.getElementById('ai-send-btn');
+  if (sendBtn) {
+    sendBtn.disabled = false;
+    sendBtn.classList.remove('responding');
+    sendBtn.innerHTML = '<i data-lucide="send"></i>';
+    sendBtn.title = 'Send message';
+  }
+  lucide.createIcons();
+}
+
+function setAIResponseState() {
+  aiIsResponding = true;
+  const sendBtn = document.getElementById('ai-send-btn');
+  if (sendBtn) {
+    sendBtn.disabled = false;
+    sendBtn.classList.add('responding');
+    sendBtn.innerHTML = '<i data-lucide="square"></i>';
+    sendBtn.title = 'Stop response';
+  }
+  lucide.createIcons();
+}
+
 window.sendAIMessage = async function() {
+  if (aiIsResponding) { stopAIResponse(); return; }
   const input = document.getElementById('ai-input');
   const msg = input.value.trim();
   if (!msg) return;
 
-  const sendBtn = document.getElementById('ai-send-btn');
-  sendBtn.disabled = true;
+  const chat = getActiveAIChat();
   input.value = '';
   autoResizeTextarea(input);
+  setAIResponseState();
 
-  appendChatMessage('user', msg);
+  const userMessage = { id: `msg-${Date.now()}-user`, role: 'user', content: msg, createdAt: new Date().toISOString() };
+  chat.messages.push(userMessage);
+  if (chat.messages.length === 1 || !chat.title || chat.title === 'New Chat') chat.title = getAIChatTitle(msg);
+  chat.updatedAt = new Date().toISOString();
+  syncActiveAIHistory();
+  saveAIChatHistory();
+  appendChatMessage('user', msg, userMessage.id);
   const loadingId = appendChatLoading();
 
-  aiChatHistory.push({ role: 'user', content: msg });
+  aiAbortController = new AbortController();
 
   try {
     const model = document.getElementById('ai-model-select').value;
@@ -1096,29 +1312,45 @@ Format responses clearly with:
 - Include practical examples when explaining concepts
 - Keep responses concise but comprehensive`;
 
-    const response = await callOpenRouterWithHistory(systemPrompt, aiChatHistory, model);
+    const response = await callOpenRouterWithHistory(systemPrompt, aiChatHistory, model, 1000, aiAbortController.signal);
     removeChatLoading(loadingId);
-    appendChatMessage('assistant', response);
-    aiChatHistory.push({ role: 'assistant', content: response });
-
-    if (aiChatHistory.length > 20) aiChatHistory = aiChatHistory.slice(-20);
+    const assistantMessage = { id: `msg-${Date.now()}-assistant`, role: 'assistant', content: response, createdAt: new Date().toISOString() };
+    chat.messages.push(assistantMessage);
+    chat.updatedAt = new Date().toISOString();
+    appendChatMessage('assistant', response, assistantMessage.id);
+    if (chat.messages.length > 40) chat.messages = chat.messages.slice(-40);
+    syncActiveAIHistory();
+    saveAIChatHistory();
   } catch(e) {
     removeChatLoading(loadingId);
-    appendChatMessage('assistant', '⚠️ Sorry, I encountered an error. Please check your OpenRouter API key in firebase.js. Make sure OPENROUTER_API_KEY is set correctly.');
+    if (e.name !== 'AbortError') {
+      const errorMessage = `⚠️ Sorry, the AI service is unavailable right now. ${e.message || 'Please try again in a moment.'}`;
+      const assistantMessage = { id: `msg-${Date.now()}-assistant`, role: 'assistant', content: errorMessage, createdAt: new Date().toISOString() };
+      chat.messages.push(assistantMessage);
+      appendChatMessage('assistant', errorMessage, assistantMessage.id);
+      syncActiveAIHistory();
+      saveAIChatHistory();
+    }
   }
-  sendBtn.disabled = false;
+  resetAIResponseState();
 };
 
-function appendChatMessage(role, content) {
+function appendChatMessage(role, content, messageId = '', shouldScroll = true) {
   const container = document.getElementById('ai-chat-messages');
+  if (!container) return;
   const div = document.createElement('div');
   div.className = `ai-msg ${role}`;
+  if (messageId) div.dataset.messageId = messageId;
   const formatted = formatMarkdown(content);
+  const actions = role === 'user' && messageId
+    ? `<div class="ai-message-actions"><button onclick="editAIMessage('${messageId}')"><i data-lucide="pencil"></i> Edit</button></div>`
+    : '';
   div.innerHTML = role === 'user'
-    ? `<div class="ai-bubble">${formatted}</div><div class="ai-avatar">👤</div>`
+    ? `<div class="ai-message-content"><div class="ai-bubble">${formatted}</div>${actions}</div><div class="ai-avatar">👤</div>`
     : `<div class="ai-avatar">🤖</div><div class="ai-bubble">${formatted}</div>`;
   container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+  if (shouldScroll) container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
 }
 
 function appendChatLoading() {
@@ -1127,7 +1359,7 @@ function appendChatLoading() {
   const div = document.createElement('div');
   div.className = 'ai-msg ai-msg-loading';
   div.id = id;
-  div.innerHTML = `<div class="ai-avatar">🤖</div><div class="ai-bubble"><div class="typing-dots"><span></span><span></span><span></span></div><span>Thinking...</span></div>`;
+  div.innerHTML = `<div class="ai-avatar">🤖</div><div class="ai-bubble"><div class="typing-dots"><span></span><span></span><span></span></div><span>Thinking... Tap stop to cancel.</span></div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
   return id;
@@ -1137,8 +1369,17 @@ function removeChatLoading(id) {
   document.getElementById(id)?.remove();
 }
 
+function escapeHtml(text = '') {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function formatMarkdown(text) {
-  return text
+  return escapeHtml(text)
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -2040,71 +2281,138 @@ function clearAllCharts() {
 // ============================================================
 // OPENROUTER API
 // ============================================================
-async function callOpenRouter(prompt, maxTokens = 1000) {
-  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
-    const res = await fetch(AI_API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt, maxTokens })
-    });
-    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
-    const data = await res.json().catch(() => null);
-    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || '';
-  }
-  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
-    throw new Error('OpenRouter API key not configured');
-  }
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'CREO ECE Career OS'
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.0-flash-exp:free',
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  if (!res.ok) throw new Error(`OpenRouter error: ${res.status}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
+const DEFAULT_AI_MODEL = 'openrouter/owl-alpha';
+const AI_FALLBACK_MODELS = [
+  DEFAULT_AI_MODEL,
+  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+  'qwen/qwen3-coder:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'google/gemini-3.1-flash-lite'
+];
+
+function getOpenRouterApiKey() {
+  if (typeof OPENROUTER_API_KEY === 'undefined') return '';
+  return OPENROUTER_API_KEY && OPENROUTER_API_KEY !== 'YOUR_OPENROUTER_API_KEY' ? OPENROUTER_API_KEY : '';
 }
 
-async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens = 1000) {
-  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
-    const latestMessage = [...history].reverse().find(m => m.role === 'user')?.content || '';
-    const res = await fetch(AI_API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: latestMessage, systemPrompt, history, model, maxTokens })
-    });
-    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
-    const data = await res.json().catch(() => null);
-    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || 'No response received.';
-  }
-  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
-    throw new Error('OpenRouter API key not configured. Please add your key in firebase.js');
-  }
-  const messages = [{ role: 'system', content: systemPrompt }, ...history];
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+function getAIProxyEndpoint() {
+  if (typeof AI_API_ENDPOINT === 'undefined') return '';
+  return AI_API_ENDPOINT || '';
+}
+
+function extractAIResponse(data) {
+  if (!data) return '';
+  if (typeof data === 'string') return data;
+  return data.response
+    || data.content
+    || data.message
+    || data.text
+    || data.output_text
+    || data.choices?.[0]?.message?.content
+    || data.choices?.[0]?.text
+    || data.data?.response
+    || data.data?.content
+    || '';
+}
+
+async function parseAIResponse(res) {
+  const text = await res.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch(e) { return text; }
+}
+
+async function requestAIProxy(payload, signal) {
+  const endpoint = getAIProxyEndpoint();
+  if (!endpoint) throw new Error('AI proxy is not configured.');
+  const res = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'CREO ECE Career OS'
-    },
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `HTTP ${res.status}`);
+  const data = await parseAIResponse(res);
+  if (!res.ok) throw new Error(extractAIResponse(data) || `AI proxy error: ${res.status}`);
+  const response = extractAIResponse(data);
+  if (!response) throw new Error('AI proxy returned an empty response.');
+  return response;
+}
+
+function getModelFallbackOrder(model) {
+  return [...new Set([model || DEFAULT_AI_MODEL, ...AI_FALLBACK_MODELS].filter(Boolean))];
+}
+
+async function requestOpenRouter(messages, model, maxTokens = 1000, signal) {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey) throw new Error('OpenRouter API key is not configured.');
+
+  let lastError = null;
+  for (const modelId of getModelFallbackOrder(model)) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin || window.location.href,
+          'X-Title': 'CREO ECE Career OS'
+        },
+        body: JSON.stringify({ model: modelId, max_tokens: maxTokens, messages }),
+        signal
+      });
+      const data = await parseAIResponse(res);
+      if (!res.ok) throw new Error(extractAIResponse(data) || data?.error?.message || `OpenRouter error: ${res.status}`);
+      const response = extractAIResponse(data);
+      if (response) return response;
+      throw new Error(`OpenRouter returned an empty response for ${modelId}.`);
+    } catch(e) {
+      if (e.name === 'AbortError') throw e;
+      lastError = e;
+      console.warn(`AI model failed (${modelId}); trying fallback if available.`, e);
+    }
   }
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || 'No response received.';
+  throw lastError || new Error('All AI models failed.');
+}
+
+async function callOpenRouter(prompt, maxTokens = 1000) {
+  const payload = {
+    message: prompt,
+    prompt,
+    model: DEFAULT_AI_MODEL,
+    maxTokens,
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }]
+  };
+
+  try {
+    return await requestAIProxy(payload);
+  } catch(proxyError) {
+    console.warn('AI proxy failed; falling back to OpenRouter direct API.', proxyError);
+    return requestOpenRouter(payload.messages, DEFAULT_AI_MODEL, maxTokens);
+  }
+}
+
+async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens = 1000, signal) {
+  const selectedModel = model || DEFAULT_AI_MODEL;
+  const messages = [{ role: 'system', content: systemPrompt }, ...history];
+  const latestMessage = [...history].reverse().find(m => m.role === 'user')?.content || '';
+  const payload = {
+    message: latestMessage,
+    prompt: latestMessage,
+    systemPrompt,
+    history,
+    messages,
+    model: selectedModel,
+    maxTokens,
+    max_tokens: maxTokens
+  };
+
+  try {
+    return await requestAIProxy(payload, signal);
+  } catch(proxyError) {
+    if (proxyError.name === 'AbortError') throw proxyError;
+    console.warn('AI proxy failed; falling back to OpenRouter direct API.', proxyError);
+    return requestOpenRouter(messages, selectedModel, maxTokens, signal);
+  }
 }
 
 // ============================================================
