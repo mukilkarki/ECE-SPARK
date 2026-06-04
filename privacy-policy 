@@ -1,6 +1,131 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ECE SPARK - PRIVACY POLICY</title>
+<style>
+:root{
+    --bg:#0a0a0f;
+    --bg2:#12121c;
+    --card:rgba(255,255,255,0.05);
+    --border:rgba(255,255,255,0.08);
+    --text:#f5f5ff;
+    --text2:#a0a0c0;
+    --cyan:#00f5c4;
+    --cyan-glow:rgba(0,245,196,.35);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:linear-gradient(135deg,#0a0a0f,#111122);
+    color:var(--text);
+    font-family:Inter,Arial,sans-serif;
+    line-height:1.7;
+    padding:30px 15px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    background:var(--card);
+    border:1px solid var(--border);
+    backdrop-filter:blur(20px);
+    border-radius:24px;
+    padding:35px;
+    box-shadow:
+        0 10px 40px rgba(0,0,0,.4),
+        0 0 30px var(--cyan-glow);
+}
+
+.logo{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.logo h1{
+    font-size:2rem;
+    font-weight:800;
+}
+
+.logo span{
+    color:var(--cyan);
+}
+
+.updated{
+    text-align:center;
+    color:var(--text2);
+    margin-bottom:25px;
+}
+
+h2{
+    color:var(--cyan);
+    margin-top:25px;
+    margin-bottom:10px;
+    font-size:1.2rem;
+}
+
+p{
+    color:var(--text2);
+    margin-bottom:12px;
+}
+
+ul{
+    margin-left:20px;
+    color:var(--text2);
+}
+
+li{
+    margin-bottom:8px;
+}
+
+.footer{
+    margin-top:40px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+    text-align:center;
+    color:var(--text2);
+}
+
+.footer strong{
+    color:var(--cyan);
+}
+
+.back-btn{
+    display:inline-block;
+    margin-top:25px;
+    padding:12px 20px;
+    border-radius:12px;
+    background:linear-gradient(
+        135deg,
+        var(--cyan),
+        #00cfa6
+    );
+    color:#000;
+    font-weight:700;
+    text-decoration:none;
+    box-shadow:0 0 20px var(--cyan-glow);
+}
+
+.back-btn:hover{
+    transform:translateY(-2px);
+}
+
+@media(max-width:768px){
+    .container{
+        padding:22px;
+    }
+
+    .logo h1{
+        font-size:1.6rem;
+    }
+}
+</style>
 </head>
 <body>
 
@@ -15,6 +140,61 @@ Last Updated: June 2026
 </p>
 
 <!-- All your Privacy Policy or Terms content here -->
+<h1>Privacy Policy</h1>
+
+<p>Last Updated: June 2026</p>
+
+<h2>1. Introduction</h2>
+<p>
+ECE-SPARK ("Platform") is published by Creovisia and developed by Mukil Karki M.
+This Privacy Policy explains how we collect, use, and protect your information.
+</p>
+
+<h2>2. Information We Collect</h2>
+<ul>
+<li>Name and profile information</li>
+<li>Email address</li>
+<li>Academic information entered by users</li>
+<li>Progress, achievements, and learning data</li>
+<li>Technical information required for platform functionality</li>
+</ul>
+
+<h2>3. How We Use Information</h2>
+<ul>
+<li>Provide platform services</li>
+<li>Improve user experience</li>
+<li>Track academic progress</li>
+<li>Enhance platform security</li>
+<li>Develop future features</li>
+</ul>
+
+<h2>4. Data Security</h2>
+<p>
+Reasonable security measures are implemented to protect user data.
+However, no internet-based service can guarantee absolute security.
+</p>
+
+<h2>5. Third-Party Services</h2>
+<p>
+ECE-SPARK may use Firebase, Cloudinary, OpenRouter, and other trusted services to provide functionality.
+</p>
+
+<h2>6. User Rights</h2>
+<p>
+Users may request correction or deletion of their account information where applicable.
+</p>
+
+<h2>7. Changes</h2>
+<p>
+This Privacy Policy may be updated periodically without prior notice.
+</p>
+
+<h2>8. Contact</h2>
+<p>
+Publisher: Creovisia<br>
+Developer: Mukil Karki M
+</p>
+
 
 <div class="footer">
     <p>
