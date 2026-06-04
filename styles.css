@@ -123,40 +123,119 @@ img { display: block; max-width: 100%; }
   -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow);
 }
-
 /* ============================================================
    SPLASH SCREEN
    ============================================================ */
 .splash {
-  position: fixed; inset: 0; z-index: 9999;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   background: #0a0a0f;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
   transition: opacity 0.5s, visibility 0.5s;
 }
-.splash.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
-.splash-inner { text-align: center; }
-.splash-logo { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; }
-.splash-icon { font-size: 3rem; animation: pulse-icon 1.5s ease-in-out infinite; }
+
+.splash.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-inner {
+  text-align: center;
+  width: 100%;
+  max-width: 320px;
+  margin: auto;
+}
+
+.splash-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.splash-icon {
+  font-size: clamp(2rem, 8vw, 3rem);
+  animation: pulse-icon 1.5s ease-in-out infinite;
+}
+
 .splash-wordmark {
   font-family: var(--font-display);
-  font-size: 2.5rem;
+  font-size: clamp(1.6rem, 7vw, 2.5rem);
   font-weight: 800;
   color: #f0f0f8;
   letter-spacing: -1px;
+  line-height: 1.1;
 }
-.splash-wordmark span { color: var(--cyan); }
-.splash-tagline { color: var(--text-2); font-size: 0.9rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 2rem; }
-.splash-loader { width: 200px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden; margin: 0 auto; }
+
+.splash-wordmark span {
+  color: var(--cyan);
+}
+
+.splash-tagline {
+  color: var(--text-2);
+  font-size: clamp(0.7rem, 3vw, 0.9rem);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  padding: 0 10px;
+}
+
+.splash-loader {
+  width: min(180px, 70vw);
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
 .loader-bar {
   height: 100%;
   width: 40%;
-  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  background: linear-gradient(
+    90deg,
+    var(--cyan),
+    var(--purple)
+  );
   border-radius: 99px;
   animation: loader-slide 1.5s ease-in-out infinite;
 }
-@keyframes loader-slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }
-@keyframes pulse-icon { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
 
+@keyframes loader-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+@keyframes pulse-icon {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Extra Small Phones */
+@media (max-width: 480px) {
+  .splash-inner {
+    max-width: 280px;
+  }
+
+  .splash-wordmark {
+    font-size: 1.8rem;
+  }
+
+  .splash-tagline {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+  }
+
+  .splash-loader {
+    width: 140px;
+  }
+}
 /* ============================================================
    AUTH SCREEN
    ============================================================ */
