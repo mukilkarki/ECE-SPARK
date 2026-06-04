@@ -1554,3 +1554,41 @@ canvas { display: block; }
   animation: card-in 0.2s ease;
 }
 .notif-item { padding: 10px; border-radius: var(--radius-sm); background: var(--surface); margin-bottom: 6px; font-size: 0.84rem; }
+
+.profile-footer{
+    margin-top:20px;
+    padding:24px;
+    text-align:center;
+    border-radius:20px;
+}
+
+.profile-footer h3{
+    font-family:var(--font-display);
+    margin-bottom:10px;
+    color:var(--cyan);
+}
+
+.profile-footer p{
+    color:var(--text-2);
+    margin:4px 0;
+    font-size:0.9rem;
+}
+
+.footer-links{
+    margin-top:15px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.footer-links a{
+    color:var(--cyan);
+    text-decoration:none;
+    transition:0.3s;
+}
+
+.footer-links a:hover{
+    opacity:0.8;
+}
