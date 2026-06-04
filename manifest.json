@@ -1,6 +1,6 @@
 {
-  "name": "CREO ECE Career OS",
-  "short_name": "CREO ECE",
+  "name": "ECE SPARK",
+  "short_name": "ECE SPARK",
   "description": "Your complete ECE to Cybersecurity + AI career operating system",
   "start_url": "./",
   "display": "standalone",
