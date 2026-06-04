@@ -1324,7 +1324,7 @@ Format responses clearly with:
   } catch(e) {
     removeChatLoading(loadingId);
     if (e.name !== 'AbortError') {
-      const errorMessage = '⚠️ Sorry, I encountered an error. Please check your OpenRouter API key in firebase.js. Make sure OPENROUTER_API_KEY is set correctly.';
+      const errorMessage = `⚠️ Sorry, the AI service is unavailable right now. ${e.message || 'Please try again in a moment.'}`;
       const assistantMessage = { id: `msg-${Date.now()}-assistant`, role: 'assistant', content: errorMessage, createdAt: new Date().toISOString() };
       chat.messages.push(assistantMessage);
       appendChatMessage('assistant', errorMessage, assistantMessage.id);
@@ -2281,73 +2281,138 @@ function clearAllCharts() {
 // ============================================================
 // OPENROUTER API
 // ============================================================
-async function callOpenRouter(prompt, maxTokens = 1000) {
-  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
-    const res = await fetch(AI_API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt, maxTokens })
-    });
-    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
-    const data = await res.json().catch(() => null);
-    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || '';
-  }
-  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
-    throw new Error('OpenRouter API key not configured');
-  }
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+const DEFAULT_AI_MODEL = 'openrouter/owl-alpha';
+const AI_FALLBACK_MODELS = [
+  DEFAULT_AI_MODEL,
+  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+  'qwen/qwen3-coder:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'google/gemini-3.1-flash-lite'
+];
+
+function getOpenRouterApiKey() {
+  if (typeof OPENROUTER_API_KEY === 'undefined') return '';
+  return OPENROUTER_API_KEY && OPENROUTER_API_KEY !== 'YOUR_OPENROUTER_API_KEY' ? OPENROUTER_API_KEY : '';
+}
+
+function getAIProxyEndpoint() {
+  if (typeof AI_API_ENDPOINT === 'undefined') return '';
+  return AI_API_ENDPOINT || '';
+}
+
+function extractAIResponse(data) {
+  if (!data) return '';
+  if (typeof data === 'string') return data;
+  return data.response
+    || data.content
+    || data.message
+    || data.text
+    || data.output_text
+    || data.choices?.[0]?.message?.content
+    || data.choices?.[0]?.text
+    || data.data?.response
+    || data.data?.content
+    || '';
+}
+
+async function parseAIResponse(res) {
+  const text = await res.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch(e) { return text; }
+}
+
+async function requestAIProxy(payload, signal) {
+  const endpoint = getAIProxyEndpoint();
+  if (!endpoint) throw new Error('AI proxy is not configured.');
+  const res = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'CREO ECE Career OS'
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.0-flash-exp:free',
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }]
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal
   });
-  if (!res.ok) throw new Error(`OpenRouter error: ${res.status}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
+  const data = await parseAIResponse(res);
+  if (!res.ok) throw new Error(extractAIResponse(data) || `AI proxy error: ${res.status}`);
+  const response = extractAIResponse(data);
+  if (!response) throw new Error('AI proxy returned an empty response.');
+  return response;
+}
+
+function getModelFallbackOrder(model) {
+  return [...new Set([model || DEFAULT_AI_MODEL, ...AI_FALLBACK_MODELS].filter(Boolean))];
+}
+
+async function requestOpenRouter(messages, model, maxTokens = 1000, signal) {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey) throw new Error('OpenRouter API key is not configured.');
+
+  let lastError = null;
+  for (const modelId of getModelFallbackOrder(model)) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin || window.location.href,
+          'X-Title': 'CREO ECE Career OS'
+        },
+        body: JSON.stringify({ model: modelId, max_tokens: maxTokens, messages }),
+        signal
+      });
+      const data = await parseAIResponse(res);
+      if (!res.ok) throw new Error(extractAIResponse(data) || data?.error?.message || `OpenRouter error: ${res.status}`);
+      const response = extractAIResponse(data);
+      if (response) return response;
+      throw new Error(`OpenRouter returned an empty response for ${modelId}.`);
+    } catch(e) {
+      if (e.name === 'AbortError') throw e;
+      lastError = e;
+      console.warn(`AI model failed (${modelId}); trying fallback if available.`, e);
+    }
+  }
+  throw lastError || new Error('All AI models failed.');
+}
+
+async function callOpenRouter(prompt, maxTokens = 1000) {
+  const payload = {
+    message: prompt,
+    prompt,
+    model: DEFAULT_AI_MODEL,
+    maxTokens,
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }]
+  };
+
+  try {
+    return await requestAIProxy(payload);
+  } catch(proxyError) {
+    console.warn('AI proxy failed; falling back to OpenRouter direct API.', proxyError);
+    return requestOpenRouter(payload.messages, DEFAULT_AI_MODEL, maxTokens);
+  }
 }
 
 async function callOpenRouterWithHistory(systemPrompt, history, model, maxTokens = 1000, signal) {
-  if (typeof AI_API_ENDPOINT !== 'undefined' && AI_API_ENDPOINT) {
-    const latestMessage = [...history].reverse().find(m => m.role === 'user')?.content || '';
-    const res = await fetch(AI_API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: latestMessage, systemPrompt, history, model, maxTokens }),
-      signal
-    });
-    if (!res.ok) throw new Error(`AI proxy error: ${res.status}`);
-    const data = await res.json().catch(() => null);
-    return data?.response || data?.content || data?.message || data?.choices?.[0]?.message?.content || 'No response received.';
-  }
-  if (typeof OPENROUTER_API_KEY === 'undefined' || !OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY') {
-    throw new Error('OpenRouter API key not configured. Please add your key in firebase.js');
-  }
+  const selectedModel = model || DEFAULT_AI_MODEL;
   const messages = [{ role: 'system', content: systemPrompt }, ...history];
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'CREO ECE Career OS'
-    },
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages }),
-    signal
-  });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `HTTP ${res.status}`);
+  const latestMessage = [...history].reverse().find(m => m.role === 'user')?.content || '';
+  const payload = {
+    message: latestMessage,
+    prompt: latestMessage,
+    systemPrompt,
+    history,
+    messages,
+    model: selectedModel,
+    maxTokens,
+    max_tokens: maxTokens
+  };
+
+  try {
+    return await requestAIProxy(payload, signal);
+  } catch(proxyError) {
+    if (proxyError.name === 'AbortError') throw proxyError;
+    console.warn('AI proxy failed; falling back to OpenRouter direct API.', proxyError);
+    return requestOpenRouter(messages, selectedModel, maxTokens, signal);
   }
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || 'No response received.';
 }
 
 // ============================================================
