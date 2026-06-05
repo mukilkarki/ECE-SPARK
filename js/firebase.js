@@ -32,7 +32,7 @@ const CLOUDINARY_UPLOAD_PRESET = "ECE SPARK";
 // Add trusted administrator emails here. For production, mirror this with
 // Firebase custom claims / Firestore rules so admin access is enforced server-side.
 const ADMIN_EMAILS = [
-  "mukilkarkimail@gmail.com"
+  "admin@ecespark.in"
 ];
 
 // ============================================================
