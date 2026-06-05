@@ -1679,3 +1679,25 @@ canvas { display: block; }
     font-size:0.75rem;
     color:var(--text-3);
 }
+
+.splash-icon-img{
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.brand-logo{
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 10px;
+}
+
+.header-logo{
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  margin-right: 6px;
+  vertical-align: middle;
+}
