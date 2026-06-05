@@ -1715,3 +1715,89 @@ canvas { display: block; }
     object-fit: contain;
     flex-shrink: 0;
 }
+/* ============================================================
+   ADMIN & NOTIFICATION CENTER
+   ============================================================ */
+.section-head-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.section-head-inline h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 700; }
+.mini-muted { color: var(--text-2); font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.9rem; }
+.btn-primary.sm, .btn-secondary.sm { padding: 0.5rem 0.8rem; font-size: 0.78rem; }
+.full-width { width: 100%; justify-content: center; }
+
+.profile-notifications { padding: 1.25rem; }
+.notification-list { display: flex; flex-direction: column; gap: 0.7rem; max-height: min(58vh, 520px); overflow: auto; }
+.notification-list.compact { margin-top: 1rem; max-height: 260px; }
+.notification-item {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.notification-item.unread { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan-dim) inset; }
+.notification-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
+.notification-item p { color: var(--text-2); font-size: 0.82rem; line-height: 1.45; margin-bottom: 0.4rem; }
+.notification-item small { color: var(--text-3); font-size: 0.72rem; }
+
+.admin-alert {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+  color: var(--yellow);
+  font-size: 0.85rem;
+}
+.admin-alert svg { flex: 0 0 auto; width: 18px; height: 18px; }
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+.admin-stat-card { padding: 1rem; }
+.admin-stat-card span { color: var(--text-2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.admin-stat-card strong { display: block; font-family: var(--font-display); font-size: 1.55rem; margin: 0.35rem 0; }
+.admin-stat-card small { color: var(--text-3); font-size: 0.72rem; }
+.admin-stat-card strong.ok { color: var(--green); }
+.admin-stat-card strong.warn { color: var(--yellow); }
+.admin-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+.admin-panel { padding: 1.15rem; overflow: hidden; }
+.admin-panel h3 { font-family: var(--font-display); font-size: 1rem; margin-bottom: 0.85rem; }
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.admin-table th, .admin-table td { padding: 0.8rem; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.82rem; }
+.admin-table th { color: var(--text-2); text-transform: uppercase; letter-spacing: 0.45px; font-size: 0.72rem; }
+.admin-table td strong, .admin-table td small { display: block; }
+.admin-table td small { color: var(--text-3); margin-top: 0.2rem; }
+.role-pill { display: inline-flex; padding: 0.25rem 0.55rem; border-radius: 99px; background: var(--surface-hover); color: var(--text-2); font-size: 0.72rem; }
+.role-pill.admin { background: var(--cyan-dim); color: var(--cyan); }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); margin-right: 0.45rem; }
+.status-dot.online { background: var(--green); box-shadow: 0 0 12px rgba(34,197,94,0.8); }
+.table-actions { white-space: nowrap; }
+.table-actions button { color: var(--text-2); padding: 0.35rem; border-radius: var(--radius-sm); }
+.table-actions button:hover { color: var(--cyan); background: var(--surface-hover); }
+.live-users-list, .activity-log, .usage-list { display: flex; flex-direction: column; gap: 0.65rem; }
+.live-user, .activity-item, .usage-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.live-user { justify-content: flex-start; align-items: center; }
+.live-user strong, .activity-item span, .usage-list span { font-size: 0.84rem; }
+.live-user small, .activity-item small, .usage-list strong { display: block; color: var(--text-3); font-size: 0.72rem; margin-top: 0.2rem; }
+
+@media (min-width: 900px) {
+  .profile-notifications { grid-column: 1 / -1; }
+  .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-panel.span-2 { grid-column: span 2; }
+}

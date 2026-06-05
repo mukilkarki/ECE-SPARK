@@ -50,6 +50,10 @@ let pomoMiniRunning = false;
 
 // ---- Charts ----
 let charts = {};
+let adminUsers = [];
+let appNotifications = [];
+let notificationUnsubscribe = null;
+let presenceTimer = null;
 
 // ============================================================
 // SPLASH & INIT
@@ -91,6 +95,8 @@ async function loadApp() {
   await loadUserProfile();
   updateHeaderUI();
   updateOptionalTrackUI();
+  startPresenceTracking();
+  listenForNotifications();
   navigate('dashboard');
   lucide.createIcons();
   initAIChatHistory();
@@ -154,6 +160,8 @@ window.signupUser = async function() {
       name, email, college, semester: sem, cgpa,
       branch: 'ECE', targetCgpa: 0, goal: 'ece_core', bio: '',
       avatarUrl: '', cyberSkills: { ...DEFAULT_CYBER_SKILLS }, roadmapProgress: {},
+      role: 'user', activeStatus: 'online', lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
+      notificationPrefs: { browser: false, inApp: true },
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     userProfile = { ...profile, createdAt: new Date() };
@@ -183,6 +191,9 @@ window.resetPassword = async function() {
 };
 
 window.logoutUser = async function() {
+  await markUserOffline();
+  if (presenceTimer) clearInterval(presenceTimer);
+  if (notificationUnsubscribe) notificationUnsubscribe();
   await auth.signOut();
   currentUser = null; userProfile = {};
   subjects = []; habits = []; notes = []; certifications = [];
@@ -222,6 +233,10 @@ function getAuthError(code) {
 // NAVIGATION
 // ============================================================
 window.navigate = function(page) {
+  if (page === 'admin' && !isAdminUser()) {
+    showToast('Admin access only.', 'warning');
+    page = 'dashboard';
+  }
   if (page === 'cybersec' && !isOptionalTrackEnabled()) {
     showToast('Enable a Cybersecurity or AI Engineering optional track in Profile first.', 'info');
     page = 'profile';
@@ -251,7 +266,8 @@ window.navigate = function(page) {
     'placement': () => { switchPlacementTab('resume'); loadProjects(); loadInternships(); },
     'analytics': loadAnalytics,
     'profile': loadProfile,
-    'ai-assistant': () => { initAIChatHistory(); renderAIChat(); renderAIHistoryList(); lucide.createIcons(); }
+    'ai-assistant': () => { initAIChatHistory(); renderAIChat(); renderAIHistoryList(); lucide.createIcons(); },
+    'admin': loadAdminDashboard
   };
   if (loaders[page]) loaders[page]();
 };
@@ -290,7 +306,7 @@ function getDefaultProfile() {
   return {
     name: currentUser.displayName || 'Student', email: currentUser.email,
     semester: '', cgpa: 0, college: '', branch: 'ECE', targetCgpa: 0,
-    goal: 'ece_core', bio: '', cyberSkills: { ...DEFAULT_CYBER_SKILLS }, roadmapProgress: {}
+    goal: 'ece_core', bio: '', role: 'user', notificationPrefs: { browser: false, inApp: true }, cyberSkills: { ...DEFAULT_CYBER_SKILLS }, roadmapProgress: {}
   };
 }
 
@@ -310,7 +326,14 @@ function updateHeaderUI() {
   document.getElementById('header-avatar').src = avatarUrl;
   document.getElementById('sidebar-avatar').src = avatarUrl;
   const roleEl = document.getElementById('sidebar-role');
-  if (roleEl) roleEl.textContent = getCareerGoalLabel(userProfile.goal);
+  if (roleEl) roleEl.textContent = isAdminUser() ? 'Administrator' : getCareerGoalLabel(userProfile.goal);
+  document.querySelectorAll('[data-admin-only]').forEach(el => el.classList.toggle('hidden', !isAdminUser()));
+}
+
+function isAdminUser(profile = userProfile) {
+  const configuredAdmins = Array.isArray(window.ADMIN_EMAILS) ? window.ADMIN_EMAILS : (typeof ADMIN_EMAILS !== 'undefined' ? ADMIN_EMAILS : []);
+  const email = (currentUser?.email || profile?.email || '').toLowerCase();
+  return profile?.role === 'admin' || profile?.isAdmin === true || configuredAdmins.map(e => String(e).toLowerCase()).includes(email);
 }
 
 function isOptionalTrackEnabled() {
@@ -355,6 +378,7 @@ function loadProfile() {
   document.getElementById('profile-track-badge').textContent = badgeText;
   document.getElementById('profile-optional-badge').classList.toggle('hidden', !isOptionalTrackEnabled());
   document.getElementById('profile-bio-input').value = p.bio || '';
+  renderProfileNotifications();
   lucide.createIcons();
 }
 
@@ -424,7 +448,8 @@ window.uploadProfilePhoto = function() {
     if (!file) return;
     showToast('Uploading...', 'info');
     try {
-      const url = await uploadToCloudinary(file);
+      const uploaded = await uploadToCloudinary(file);
+      const url = uploaded.secure_url || uploaded;
       await db.collection('users').doc(currentUser.uid).update({ avatarUrl: url });
       userProfile.avatarUrl = url;
       updateHeaderUI(); loadProfile();
@@ -1497,11 +1522,12 @@ async function uploadNote() {
   const type = document.getElementById('m-note-type').value;
   const subject = document.getElementById('m-note-subject').value.trim();
   const tags = document.getElementById('m-note-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
-  let cloudinaryUrl = '', publicId = '';
+  let cloudinaryUrl = '', publicId = '', fileBytes = 0;
 
   if (type !== 'link') {
     const file = document.getElementById('m-note-file').files[0];
     if (!file) { showToast('Please select a file', 'warning'); return; }
+    fileBytes = file.size || 0;
     const statusEl = document.getElementById('m-note-upload-status');
     statusEl.textContent = 'Uploading to Cloudinary...';
     try {
@@ -1518,7 +1544,7 @@ async function uploadNote() {
   }
 
   await db.collection('users').doc(currentUser.uid).collection('notes').add({
-    title, type, subject, tags, cloudinaryUrl, publicId,
+    title, type, subject, tags, cloudinaryUrl, publicId, fileBytes,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   closeAllModals(); await loadNotes();
@@ -1547,7 +1573,7 @@ async function uploadToCloudinary(file) {
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error('Cloudinary upload failed');
   const data = await res.json();
-  return data.secure_url;
+  return data;
 }
 
 // ============================================================
@@ -2469,12 +2495,316 @@ window.closeModal = function(e) {
 // ============================================================
 // NOTIFICATIONS
 // ============================================================
-window.showNotifications = function() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
-  showToast('Notifications: All caught up! ✓', 'info');
+function listenForNotifications() {
+  if (!currentUser) return;
+  if (notificationUnsubscribe) notificationUnsubscribe();
+  notificationUnsubscribe = db.collection('users').doc(currentUser.uid)
+    .collection('notifications').orderBy('createdAt', 'desc').limit(25)
+    .onSnapshot(snap => {
+      const previousUnread = appNotifications.filter(n => !n.read).length;
+      appNotifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateNotificationDot();
+      renderProfileNotifications();
+      const newest = appNotifications.find(n => !n.read);
+      if (newest && previousUnread < appNotifications.filter(n => !n.read).length) {
+        maybeShowBrowserNotification(newest);
+      }
+    }, err => console.warn('Notification listener failed', err));
+}
+
+function updateNotificationDot() {
+  const dot = document.getElementById('notif-dot');
+  if (dot) dot.classList.toggle('hidden', !appNotifications.some(n => !n.read));
+}
+
+window.enableBrowserNotifications = async function() {
+  if (!('Notification' in window)) { showToast('Browser notifications are not supported here.', 'warning'); return; }
+  const permission = await Notification.requestPermission();
+  const enabled = permission === 'granted';
+  await db.collection('users').doc(currentUser.uid).set({ notificationPrefs: { browser: enabled, inApp: true } }, { merge: true });
+  userProfile.notificationPrefs = { ...(userProfile.notificationPrefs || {}), browser: enabled, inApp: true };
+  showToast(enabled ? 'Browser notifications enabled.' : 'Browser notifications not allowed.', enabled ? 'success' : 'warning');
 };
+
+function maybeShowBrowserNotification(notification) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const prefs = userProfile.notificationPrefs || {};
+  if (prefs.browser === false) return;
+  navigator.serviceWorker?.ready?.then(reg => {
+    reg.showNotification(notification.title || 'ECE SPARK', {
+      body: notification.message || '',
+      icon: 'assets/ecespark_logo.jpg',
+      badge: 'assets/ecespark_logo.jpg',
+      tag: notification.id || notification.createdAt?.seconds || Date.now()
+    });
+  }).catch(() => new Notification(notification.title || 'ECE SPARK', { body: notification.message || '', icon: 'assets/ecespark_logo.jpg' }));
+}
+
+window.showNotifications = function() {
+  const rows = appNotifications.length ? appNotifications.map(n => `
+    <div class="notification-item ${n.read ? '' : 'unread'}">
+      <div><strong>${escHtml(n.title || 'Notification')}</strong><p>${escHtml(n.message || '')}</p><small>${formatTimestamp(n.createdAt)}</small></div>
+    </div>`).join('') : '<div class="empty-state-sm">No notifications yet.</div>';
+  openModal('Notifications', `<div class="notification-list">${rows}</div>`, [
+    { label: 'Enable Browser Alerts', action: enableBrowserNotifications, cls: 'btn-secondary' },
+    { label: 'Clear All', action: clearMyNotifications, cls: 'btn-primary' }
+  ]);
+};
+
+function renderProfileNotifications() {
+  const el = document.getElementById('profile-notifications-list');
+  if (!el) return;
+  if (!appNotifications.length) { el.innerHTML = '<div class="empty-state-sm">No notifications yet.</div>'; return; }
+  el.innerHTML = appNotifications.slice(0, 6).map(n => `
+    <div class="notification-item ${n.read ? '' : 'unread'}">
+      <div><strong>${escHtml(n.title || 'Notification')}</strong><p>${escHtml(n.message || '')}</p><small>${formatTimestamp(n.createdAt)}</small></div>
+    </div>`).join('');
+}
+
+window.clearMyNotifications = async function() {
+  if (!currentUser) return;
+  const batch = db.batch();
+  appNotifications.forEach(n => batch.set(db.collection('users').doc(currentUser.uid).collection('notifications').doc(n.id), { read: true, readAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+  await batch.commit().catch(e => showToast('Unable to clear notifications: ' + e.message, 'error'));
+  appNotifications = appNotifications.map(n => ({ ...n, read: true }));
+  updateNotificationDot();
+  renderProfileNotifications();
+  closeAllModals();
+  showToast('Notifications cleared.', 'success');
+};
+
+
+// ============================================================
+// ADMIN CONTROL CENTER
+// ============================================================
+async function startPresenceTracking() {
+  if (!currentUser) return;
+  await db.collection('users').doc(currentUser.uid).set({
+    activeStatus: 'online',
+    lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
+    lastSeenPath: location.pathname,
+    email: currentUser.email
+  }, { merge: true }).catch(() => {});
+  if (presenceTimer) clearInterval(presenceTimer);
+  presenceTimer = setInterval(() => {
+    if (!currentUser) return;
+    db.collection('users').doc(currentUser.uid).set({
+      activeStatus: 'online',
+      lastActiveAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastSeenPath: location.pathname
+    }, { merge: true }).catch(() => {});
+  }, 60000);
+  window.addEventListener('beforeunload', () => markUserOffline());
+}
+
+async function markUserOffline() {
+  if (!currentUser) return;
+  return db.collection('users').doc(currentUser.uid).set({
+    activeStatus: 'offline',
+    lastActiveAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }).catch(() => {});
+}
+
+window.loadAdminDashboard = async function() {
+  if (!isAdminUser()) { showToast('Admin access only.', 'warning'); return; }
+  try {
+    const usersSnap = await db.collection('users').get();
+    adminUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAdminUsers();
+    renderAdminStats();
+    renderLiveUsers();
+    await Promise.all([loadStorageSettings(), checkOpenRouterStatus(), loadAdminActivityLog()]);
+    await logAdminActivity('Viewed admin dashboard');
+  } catch(e) {
+    document.getElementById('admin-users-table').innerHTML = `<tr><td colspan="6">Admin data unavailable: ${escHtml(e.message)}</td></tr>`;
+    showToast('Unable to load admin data. Check Firestore admin rules.', 'error');
+  }
+  lucide.createIcons();
+};
+
+function renderAdminStats() {
+  const live = adminUsers.filter(isRecentlyActive);
+  document.getElementById('admin-total-users').textContent = adminUsers.length;
+  document.getElementById('admin-live-users').textContent = live.length;
+  const perf = getPerformanceRate();
+  document.getElementById('admin-performance-rate').textContent = perf.label;
+  document.getElementById('admin-performance-detail').textContent = perf.detail;
+  const selector = document.getElementById('admin-notification-target');
+  if (selector) selector.innerHTML = '<option value="all">All users</option>' + adminUsers.map(u => `<option value="${u.id}">${escHtml(u.name || u.email || u.id)}</option>`).join('');
+}
+
+function renderAdminUsers() {
+  const body = document.getElementById('admin-users-table');
+  if (!adminUsers.length) { body.innerHTML = '<tr><td colspan="6">No users found.</td></tr>'; return; }
+  body.innerHTML = adminUsers.map(u => `
+    <tr>
+      <td><strong>${escHtml(u.name || 'Unnamed')}</strong><small>${escHtml(u.email || u.id)}</small></td>
+      <td><span class="role-pill ${u.role === 'admin' ? 'admin' : ''}">${escHtml(u.role || 'user')}</span></td>
+      <td><span class="status-dot ${isRecentlyActive(u) ? 'online' : ''}"></span>${isRecentlyActive(u) ? 'Live' : 'Offline'}<small>${formatTimestamp(u.lastActiveAt)}</small></td>
+      <td>${escHtml(u.semester || '—')}</td>
+      <td>${formatNumber(u.cgpa || 0)}</td>
+      <td class="table-actions"><button onclick="showAdminUserModal('${u.id}')"><i data-lucide="pencil"></i></button><button onclick="deleteAdminUser('${u.id}')"><i data-lucide="trash-2"></i></button></td>
+    </tr>`).join('');
+  lucide.createIcons();
+}
+
+function renderLiveUsers() {
+  const el = document.getElementById('admin-live-users-list');
+  const live = adminUsers.filter(isRecentlyActive);
+  if (!live.length) { el.innerHTML = '<div class="empty-state-sm">No active users</div>'; return; }
+  el.innerHTML = live.map(u => `<div class="live-user"><span class="status-dot online"></span><div><strong>${escHtml(u.name || u.email || 'User')}</strong><small>${escHtml(u.email || u.id)} · ${formatTimestamp(u.lastActiveAt)}</small></div></div>`).join('');
+}
+
+function isRecentlyActive(user) {
+  const date = toDate(user.lastActiveAt);
+  return user.activeStatus === 'online' && date && (Date.now() - date.getTime()) < 5 * 60 * 1000;
+}
+
+window.showAdminUserModal = function(userId = '') {
+  const u = adminUsers.find(x => x.id === userId) || {};
+  openModal(userId ? 'Edit User' : 'Add User Profile', `
+    <div class="form-row"><div class="form-group"><label>Name</label><input id="admin-user-name" value="${escHtml(u.name || '')}"></div><div class="form-group"><label>Email</label><input id="admin-user-email" value="${escHtml(u.email || '')}"></div></div>
+    <div class="form-row"><div class="form-group"><label>Role</label><select id="admin-user-role"><option value="user">User</option><option value="admin">Admin</option></select></div><div class="form-group"><label>Semester</label><input id="admin-user-semester" value="${escHtml(u.semester || '')}"></div></div>
+    <div class="form-row"><div class="form-group"><label>CGPA</label><input type="number" step="0.01" id="admin-user-cgpa" value="${escHtml(u.cgpa || '')}"></div><div class="form-group"><label>College</label><input id="admin-user-college" value="${escHtml(u.college || '')}"></div></div>
+    <p class="mini-muted">This manages the Firestore profile. Creating/deleting Firebase Auth accounts requires a trusted server or Cloud Function.</p>
+  `, [{ label: 'Save User', cls: 'btn-primary', action: () => saveAdminUser(userId) }]);
+  setTimeout(() => { const role = document.getElementById('admin-user-role'); if (role) role.value = u.role || 'user'; }, 0);
+};
+
+async function saveAdminUser(userId = '') {
+  const email = document.getElementById('admin-user-email').value.trim();
+  const data = {
+    name: document.getElementById('admin-user-name').value.trim(),
+    email,
+    role: document.getElementById('admin-user-role').value,
+    semester: document.getElementById('admin-user-semester').value.trim(),
+    cgpa: parseFloat(document.getElementById('admin-user-cgpa').value) || 0,
+    college: document.getElementById('admin-user-college').value.trim(),
+    branch: 'ECE',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  const id = userId || `profile_${Date.now()}`;
+  if (!userId) data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+  await db.collection('users').doc(id).set(data, { merge: true });
+  await logAdminActivity(`${userId ? 'Updated' : 'Added'} user profile ${email || id}`);
+  closeAllModals();
+  showToast('User profile saved.', 'success');
+  loadAdminDashboard();
+}
+
+window.deleteAdminUser = async function(userId) {
+  if (!confirm('Delete this user profile document? Auth account deletion requires server admin privileges.')) return;
+  await db.collection('users').doc(userId).delete();
+  await logAdminActivity(`Deleted user profile ${userId}`);
+  showToast('User profile deleted.', 'info');
+  loadAdminDashboard();
+};
+
+window.sendAdminNotification = async function() {
+  const target = document.getElementById('admin-notification-target').value;
+  const title = document.getElementById('admin-notification-title').value.trim();
+  const message = document.getElementById('admin-notification-message').value.trim();
+  if (!title || !message) { showToast('Title and message are required.', 'warning'); return; }
+  const recipients = target === 'all' ? adminUsers.map(u => u.id) : [target];
+  const batch = db.batch();
+  recipients.forEach(uid => {
+    const ref = db.collection('users').doc(uid).collection('notifications').doc();
+    batch.set(ref, { title, message, read: false, audience: target, sentBy: currentUser.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  });
+  await batch.commit();
+  await logAdminActivity(`Sent notification to ${target === 'all' ? 'all users' : target}: ${title}`);
+  document.getElementById('admin-notification-title').value = '';
+  document.getElementById('admin-notification-message').value = '';
+  showToast(`Notification sent to ${recipients.length} user(s).`, 'success');
+};
+
+async function checkOpenRouterStatus() {
+  const statusEl = document.getElementById('admin-ai-status');
+  const detailEl = document.getElementById('admin-ai-detail');
+  try {
+    const started = performance.now();
+    const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined;
+    await requestAIProxy({ model: DEFAULT_AI_MODEL, messages: [{ role: 'user', content: 'Return only OK for a health check.' }], max_tokens: 5 }, signal);
+    statusEl.textContent = 'Online';
+    statusEl.className = 'ok';
+    detailEl.textContent = `${Math.round(performance.now() - started)}ms proxy response`;
+  } catch(e) {
+    statusEl.textContent = 'Degraded';
+    statusEl.className = 'warn';
+    detailEl.textContent = e.message || 'Health check failed';
+  }
+}
+
+window.saveStorageSettings = async function() {
+  const firebaseUsage = document.getElementById('admin-firebase-storage-input').value.trim();
+  const cloudinaryUsage = document.getElementById('admin-cloudinary-storage-input').value.trim();
+  await db.collection('admin').doc('storageUsage').set({ firebaseUsage, cloudinaryUsage, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: currentUser.uid }, { merge: true });
+  await logAdminActivity('Updated storage usage settings');
+  showToast('Storage settings saved.', 'success');
+  loadStorageSettings();
+};
+
+async function loadStorageSettings() {
+  const doc = await db.collection('admin').doc('storageUsage').get().catch(() => null);
+  const data = doc?.exists ? doc.data() : {};
+  document.getElementById('admin-firebase-storage').textContent = data.firebaseUsage || 'Not set';
+  document.getElementById('admin-cloudinary-storage').textContent = data.cloudinaryUsage || estimateCloudinaryUsage();
+  document.getElementById('admin-firebase-storage-input').value = data.firebaseUsage || '';
+  document.getElementById('admin-cloudinary-storage-input').value = data.cloudinaryUsage || '';
+  document.getElementById('admin-storage-breakdown').innerHTML = `<div><span>Tracked note uploads</span><strong>${estimateCloudinaryUsage()}</strong></div><div><span>Firebase project</span><strong>${FIREBASE_CONFIG.projectId}</strong></div><div><span>Cloudinary cloud</span><strong>${CLOUDINARY_CLOUD_NAME}</strong></div>`;
+}
+
+function estimateCloudinaryUsage() {
+  const bytes = notes.reduce((sum, n) => sum + (Number(n.fileBytes) || 0), 0);
+  return bytes ? formatBytes(bytes) : 'No file metadata';
+}
+
+async function logAdminActivity(action) {
+  if (!currentUser || !isAdminUser()) return;
+  return db.collection('admin').doc('activity').collection('logs').add({ action, adminUid: currentUser.uid, adminEmail: currentUser.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {});
+}
+
+async function loadAdminActivityLog() {
+  const el = document.getElementById('admin-activity-log');
+  const snap = await db.collection('admin').doc('activity').collection('logs').orderBy('createdAt', 'desc').limit(20).get().catch(() => null);
+  if (!snap || snap.empty) { el.innerHTML = '<div class="empty-state-sm">No activity yet</div>'; return; }
+  el.innerHTML = snap.docs.map(d => {
+    const item = d.data();
+    return `<div class="activity-item"><span>${escHtml(item.action)}</span><small>${escHtml(item.adminEmail || '')} · ${formatTimestamp(item.createdAt)}</small></div>`;
+  }).join('');
+}
+
+function getPerformanceRate() {
+  const nav = performance.getEntriesByType?.('navigation')?.[0];
+  if (!nav) return { label: 'Good', detail: 'Performance API unavailable' };
+  const loadMs = Math.round(nav.loadEventEnd || nav.domContentLoadedEventEnd || 0);
+  if (!loadMs) return { label: 'Measuring', detail: 'Waiting for page load timing' };
+  const label = loadMs < 1500 ? 'Excellent' : loadMs < 3000 ? 'Good' : 'Needs work';
+  return { label, detail: `${loadMs}ms load time` };
+}
+
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') return value.toDate();
+  if (value.seconds) return new Date(value.seconds * 1000);
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatTimestamp(value) {
+  const d = toDate(value);
+  if (!d) return '—';
+  return d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = bytes;
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit++; }
+  return `${size.toFixed(size >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
 
 // ============================================================
 // TOAST

@@ -28,6 +28,13 @@ const OPENROUTER_API_KEY = "sk-or-v1-4645ff4cb41e68b1818a6f68dd60254efbf6ab0e725
 const CLOUDINARY_CLOUD_NAME   = "dk3e0trh6";
 const CLOUDINARY_UPLOAD_PRESET = "ECE SPARK";
 
+// ---- Admin Access Config ----
+// Add trusted administrator emails here. For production, mirror this with
+// Firebase custom claims / Firestore rules so admin access is enforced server-side.
+const ADMIN_EMAILS = [
+  "mukilkarkimail@gmail.com"
+];
+
 // ============================================================
 // Firestore Security Rules — paste in Firebase Console
 // ============================================================
@@ -35,11 +42,23 @@ const CLOUDINARY_UPLOAD_PRESET = "ECE SPARK";
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null &&
+        (request.auth.token.admin == true ||
+         request.auth.token.email in ['mukilkarkimail@gmail.com']);
+    }
+
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isAdmin();
       match /{subcollection}/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isAdmin();
       }
+    }
+
+    match /admin/{docId}/{subcollection=**} {
+      allow read, write: if isAdmin();
     }
   }
 }
