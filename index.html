@@ -154,6 +154,7 @@
     <div class="sidebar-section">
       <div class="sidebar-label">Account</div>
       <a class="sidebar-item" onclick="navigate('profile')" data-page="profile"><i data-lucide="user"></i><span>Profile</span></a>
+      <a class="sidebar-item hidden" data-admin-only onclick="navigate('admin')" data-page="admin"><i data-lucide="shield-check"></i><span>Admin</span></a>
       <a class="sidebar-item logout-item" onclick="logoutUser()"><i data-lucide="log-out"></i><span>Sign Out</span></a>
     </div>
   </nav>
@@ -615,6 +616,15 @@
           <button class="btn-secondary full-width" onclick="changePassword()"><i data-lucide="lock"></i> Change Password</button>
           <button class="btn-danger full-width" style="margin-top:0.75rem" onclick="confirmDeleteAccount()"><i data-lucide="trash-2"></i> Delete Account</button>
         </div>
+        <div class="profile-notifications glass">
+          <div class="section-head-inline">
+            <h3>Notifications</h3>
+            <button class="btn-secondary sm" onclick="clearMyNotifications()"><i data-lucide="check-check"></i> Clear</button>
+          </div>
+          <p class="mini-muted">Receive admin announcements in-app and through browser notifications when available.</p>
+          <button class="btn-primary full-width" onclick="enableBrowserNotifications()"><i data-lucide="bell-ring"></i> Enable Browser Notifications</button>
+          <div id="profile-notifications-list" class="notification-list compact"></div>
+        </div>
       </div>
 <div class="profile-footer glass">
     <h3>⚡ ECE-SPARK</h3>
@@ -637,6 +647,70 @@
     </div>
 </div>
     </section>
+
+    <!-- ADMIN -->
+    <section id="page-admin" class="page hidden">
+      <div class="page-header">
+        <div><h1>Admin Control Center</h1><p class="page-sub">Manage users, notifications, live activity, storage and API health</p></div>
+        <button class="btn-primary sm" onclick="loadAdminDashboard()"><i data-lucide="refresh-cw"></i> Refresh</button>
+      </div>
+
+      <div class="admin-alert glass">
+        <i data-lucide="shield-alert"></i>
+        <span>Admin UI is visible only to configured admins. Enforce the same roles in Firebase Security Rules before production deployment.</span>
+      </div>
+
+      <div class="admin-stats-grid">
+        <div class="admin-stat-card glass"><span>Total Users</span><strong id="admin-total-users">0</strong><small>Registered Firestore profiles</small></div>
+        <div class="admin-stat-card glass"><span>Live Users</span><strong id="admin-live-users">0</strong><small>Active in last 5 minutes</small></div>
+        <div class="admin-stat-card glass"><span>App Performance</span><strong id="admin-performance-rate">—</strong><small id="admin-performance-detail">Browser timing</small></div>
+        <div class="admin-stat-card glass"><span>OpenRouter AI</span><strong id="admin-ai-status">Checking</strong><small id="admin-ai-detail">Proxy/API status</small></div>
+        <div class="admin-stat-card glass"><span>Firebase Storage</span><strong id="admin-firebase-storage">—</strong><small>Manual quota / metadata</small></div>
+        <div class="admin-stat-card glass"><span>Cloudinary</span><strong id="admin-cloudinary-storage">—</strong><small>Uploaded note metadata</small></div>
+      </div>
+
+      <div class="admin-grid">
+        <div class="admin-panel glass span-2">
+          <div class="section-head-inline">
+            <h3>User Management</h3>
+            <button class="btn-primary sm" onclick="showAdminUserModal()"><i data-lucide="user-plus"></i> Add User Profile</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Semester</th><th>CGPA</th><th>Actions</th></tr></thead>
+              <tbody id="admin-users-table"><tr><td colspan="6">Loading users...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-panel glass">
+          <h3>Send Notification</h3>
+          <div class="form-group"><label>Recipient</label><select id="admin-notification-target"><option value="all">All users</option></select></div>
+          <div class="form-group"><label>Title</label><input type="text" id="admin-notification-title" placeholder="Announcement title" /></div>
+          <div class="form-group"><label>Message</label><textarea id="admin-notification-message" placeholder="Write notification message..."></textarea></div>
+          <button class="btn-primary full-width" onclick="sendAdminNotification()"><i data-lucide="send"></i> Send Notification</button>
+        </div>
+
+        <div class="admin-panel glass">
+          <h3>Storage Controls</h3>
+          <div class="form-group"><label>Firebase Storage Used</label><input type="text" id="admin-firebase-storage-input" placeholder="e.g. 1.2 GB / 5 GB" /></div>
+          <div class="form-group"><label>Cloudinary Used</label><input type="text" id="admin-cloudinary-storage-input" placeholder="e.g. 320 MB / 25 GB" /></div>
+          <button class="btn-secondary full-width" onclick="saveStorageSettings()"><i data-lucide="database"></i> Save Usage Notes</button>
+          <div class="usage-list" id="admin-storage-breakdown"></div>
+        </div>
+
+        <div class="admin-panel glass">
+          <h3>Live Users</h3>
+          <div id="admin-live-users-list" class="live-users-list"><div class="empty-state-sm">No active users</div></div>
+        </div>
+
+        <div class="admin-panel glass span-2">
+          <h3>Activity Log</h3>
+          <div id="admin-activity-log" class="activity-log"><div class="empty-state-sm">No activity yet</div></div>
+        </div>
+      </div>
+    </section>
+
 
   </main>
 
