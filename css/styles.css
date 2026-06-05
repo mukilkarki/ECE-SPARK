@@ -1710,8 +1710,8 @@ canvas { display: block; }
 }
 
 .header-logo{
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     object-fit: contain;
     flex-shrink: 0;
 }
