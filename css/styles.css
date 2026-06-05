@@ -1694,29 +1694,30 @@ canvas { display: block; }
   margin: 0 auto 10px;
 }
 
-.header-logo{
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  margin-right: 7px;
-  vertical-align: middle;
-}
 
-.auth-brand{
+
+.header-brand{
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 1px;
+    gap: 8px;
+    flex-wrap: nowrap; /* line break prevent */
 }
 
-.brand-logo{
-    width: 10px;
-    height: 10px;
+.header-logo{
+    width: 32px;
+    height: 32px;
     object-fit: contain;
-    margin: 0;
+    flex-shrink: 0;
 }
 
-.brand-name{
-    font-size: 3px;
-    margin: 0;
+.header-title{
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap; /* ECE SPARK same line */
+    line-height: 1;
+}
+
+.header-title em{
+    color: var(--cyan);
+    font-style: normal;
 }
