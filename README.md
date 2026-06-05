@@ -1,7 +1,11 @@
+<div align="center">
+  <!-- Makes the image smaller using inline styles -->
+<img src="assets/ecespark_logo.jpg" alt="Description" style="width: 100px; height: auto;">
+  
+</div>
 # ⚡ ECE-SPARK
 
 <div align="center">
-<img src="assets/ecespark_logo.jpg" style="size:2px;">
 ### The Next-Generation Academic & Career Platform for Electronics and Communication Engineers
 
 Transforming ECE education through structured learning, intelligent progress tracking, AI-powered assistance, and industry-ready skill development.
