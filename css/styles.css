@@ -1721,3 +1721,6 @@ canvas { display: block; }
     color: var(--cyan);
     font-style: normal;
 }
+.header-title{
+    font-size: 0.9rem;
+}
