@@ -1694,33 +1694,24 @@ canvas { display: block; }
   margin: 0 auto 10px;
 }
 
-
-
 .header-brand{
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: nowrap; /* line break prevent */
-}
-
-.header-logo{
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-    flex-shrink: 0;
-}
-
-.header-title{
-    font-size: 1rem;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
     font-weight: 700;
-    white-space: nowrap; /* ECE SPARK same line */
-    line-height: 1;
+    white-space: nowrap;
 }
 
-.header-title em{
+.header-brand em{
     color: var(--cyan);
     font-style: normal;
 }
-.header-title{
-    font-size: 0.9rem;
+
+.header-logo{
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex-shrink: 0;
 }
