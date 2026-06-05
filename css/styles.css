@@ -1701,3 +1701,23 @@ canvas { display: block; }
   margin-right: 7px;
   vertical-align: middle;
 }
+
+.auth-brand{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.brand-logo{
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    margin: 0;
+}
+
+.brand-name{
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+}
