@@ -1,8 +1,9 @@
 <div align="center">
   <!-- Makes the image smaller using inline styles -->
-<img src="assets/ecespark_logo.jpg" alt="Description" style="width: 100px; height: auto;">
+<img src="assets/ecespark_logo.jpg" alt="Description" style="width: 150px; height: auto;">
   
 </div>
+
 # ⚡ ECE-SPARK
 
 <div align="center">
